@@ -41,8 +41,11 @@ class Project:
         reports_path.update({date: report})
 
     def add_user(self, user: str):
-        self.people.append(user)
-        self.save_project()
+        if user not in self.people:
+            self.people.append(user)
+            self.save_project()
+            return True
+        return False
 
     def remove_user(self, user: str):
         if user in self.people and user is not self.owner:
