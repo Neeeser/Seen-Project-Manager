@@ -28,7 +28,8 @@ class Database:
         projects_db = self.projects_path.get()
         for project in projects_db:
             project_dict = projects_db[project]
-            self.projects[project] = Project(project, project_dict["owner"], project_dict["date_created"],
+            self.projects[project] = Project(project, project_dict["owner"], project_dict["reports_to"],
+                                             project_dict["date_created"],
                                              project_dict["due_date"],
                                              project_dict["people"])
 
@@ -54,3 +55,7 @@ if __name__ == '__main__':
     db = Database()
     db.load_all_projects()
     db.add_users_to_project("Muni Sma", ["buck", "l"])
+    print(db.projects)
+    Project("Ant ETF", "Bob", ["GWAM", "LEN"]).save_project()
+    db.load_all_projects()
+    print(db.projects)

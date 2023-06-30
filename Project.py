@@ -6,7 +6,7 @@ from datetime import timedelta
 
 class Project:
 
-    def __init__(self, project_name: str, owner: str, date_created=None, due_date=None, people=None):
+    def __init__(self, project_name: str, owner: str, reports_to: [], date_created=None, due_date=None, people=None):
         self.project_name = project_name
         self.owner = owner
         if people is None:
@@ -19,6 +19,9 @@ class Project:
         self.due_date = due_date
         self.date_created = date_created
         self.firebase_path = "root/projects/" + self.project_name
+        if isinstance(reports_to, str):
+            reports_to = [reports_to]
+        self.reports_to = reports_to
         # self.save_project()
 
     def get_date_future(self, days: int):
@@ -26,7 +29,7 @@ class Project:
 
     def asdict(self):
         return {"owner": self.owner, "people": self.people, "due_date": self.due_date,
-                "date_created": self.date_created}
+                "date_created": self.date_created, "reports_to": self.reports_to}
 
     def save_project(self):
         project_path = db.reference(self.firebase_path)
