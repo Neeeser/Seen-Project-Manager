@@ -44,7 +44,7 @@ class Project:
         reports_path = db.reference(
             self.firebase_path + "/reports/" + "/" + report_to + "/" + user)
         print(reports_path.path.__str__())
-        reports_path.update({date: report})
+        reports_path.update({len(reports_path.get()) if reports_path.get() is not None else 0: date + "=" + report})
 
     def add_user(self, user: str):
         if user not in self.people:
@@ -63,6 +63,13 @@ class Project:
     def change_owner(self, user: str):
         self.owner = user
 
-    def load_last_report(self, user: User):
-        if user.user_name in self.people:
-            reports_path = db.reference(self.firebase_path + "/reports")
+    def load_last_report(self, user: User) -> {}:
+        reports_path = db.reference(self.firebase_path + "/reports").get()
+
+        return_dict = {}
+        if reports_path is not None:
+            for group in reports_path:
+                if user.user_name in reports_path[group]:
+                    return_dict[group] = list(reports_path[group][user.user_name])[-1]
+
+        return return_dict

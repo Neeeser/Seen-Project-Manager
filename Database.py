@@ -24,7 +24,7 @@ class Database:
         users_db = self.users_path.get()
         for user in users_db:
             self.users[user] = User(users_db[user]["name"], user, users_db[user]["password"],
-                                    users_db[user]["date_joined"])
+                                    users_db[user]["date_joined"], projects=users_db[user]["projects"])
 
     def load_all_projects(self):
         projects_db = self.projects_path.get()

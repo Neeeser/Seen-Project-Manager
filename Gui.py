@@ -37,9 +37,9 @@ class DesktopGui:
 
         # Reports Tab
         self.reports_tab_layout = [
-            [sg.Button('Submit'), sg.Combo(values=tuple(self.db.projects.keys()), default_value='None', readonly=False,
+            [sg.Button('Submit'), sg.Combo(values=tuple(self.user.projects), default_value='None', readonly=False,
                                            k='-COMBO-', enable_events=True, size=30)
-                , sg.Text("Project:", visible=False), sg.Text("Owner:", visible=False)]]
+                , sg.Text("Owner:", visible=False), sg.Button('Load Latest', key="loadlatest", visible=False)]]
         self.setup_reports()
 
         # Tab Layout
@@ -92,6 +92,9 @@ class DesktopGui:
             if self.event == 'Logout':
                 self.window.close()
                 self.logout()
+
+            if self.event == "loadlatest":
+                self.load_latest_reports()
 
         self.window.close()
 
@@ -152,22 +155,38 @@ class DesktopGui:
     def submit_report(self):
         if self.displayed_project is None:
             return False
+
+        last_reports = self.displayed_project.load_last_report(self.user)
         for i in range(len(self.displayed_project.reports_to)):
-            if self.values['report' + str(i)] != '':
-                self.displayed_project.add_report(self.displayed_project.owner, self.displayed_project.reports_to[i],
+            last_report_no_time = ""
+            if self.displayed_project.reports_to[i] in last_reports:
+                last_report_no_time = last_reports[self.displayed_project.reports_to[i]].split('=')[1]
+
+            if self.values['report' + str(i)] != '' and self.values['report' + str(i)] != last_report_no_time:
+                self.displayed_project.add_report(self.user.user_name, self.displayed_project.reports_to[i],
                                                   self.values['report' + str(i)])
+                self.db.load_all_projects()
 
     def load_project_into_layout(self, project: Project):
-        self.reports_tab_layout[1][1].update(value="Project: " + project.project_name, visible=True)
-        self.reports_tab_layout[1][2].update(value="Owner: " + project.owner, visible=True)
+        self.reports_tab_layout[0][2].update(value="Owner: " + project.owner, visible=True,
+                                             background_color=self.text_background_color)
+
+        self.reports_tab_layout[0][3].update(visible=True)
 
         for i in range(len(project.reports_to)):
             self.reports_tab_layout[self.reports_row][i].update(visible=True, value=project.reports_to[i])
-            self.reports_tab_layout[self.reports_row + 1][i].update(visible=True)
+            self.reports_tab_layout[self.reports_row + 1][i].update(visible=True, value="")
 
         for i in range(len(project.reports_to), self.max_reports):
             self.reports_tab_layout[self.reports_row][i].update(visible=False)
-            self.reports_tab_layout[self.reports_row + 1][i].update(visible=False)
+            self.reports_tab_layout[self.reports_row + 1][i].update(visible=False, value="")
+
+    def load_latest_reports(self):
+        latest_reports = self.displayed_project.load_last_report(self.user)
+        for group in latest_reports:
+            multi_line_box_index = self.displayed_project.reports_to.index(group)
+            last_report_no_time = latest_reports[group].split('=')[1]
+            self.reports_tab_layout[self.reports_row + 1][multi_line_box_index].update(value=last_report_no_time)
 
 
 DesktopGui()
