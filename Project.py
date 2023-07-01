@@ -24,6 +24,9 @@ class Project:
         self.reports_to = reports_to
         # self.save_project()
 
+    def __contains__(self, item):
+        return isinstance(item, User) and item.user_name in self.people
+
     def get_date_future(self, days: int):
         return (datetime.datetime.now() + timedelta(days)).strftime("%B-%d-%Y")
 
@@ -59,3 +62,7 @@ class Project:
 
     def change_owner(self, user: str):
         self.owner = user
+
+    def load_last_report(self, user: User):
+        if user.user_name in self.people:
+            reports_path = db.reference(self.firebase_path + "/reports")

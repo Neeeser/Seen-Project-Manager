@@ -1,5 +1,6 @@
 from firebase_admin import db
 import datetime
+import hashlib
 
 
 class User:
@@ -11,9 +12,11 @@ class User:
         self.name = name
         self.projects = projects
         self.user_name = user_name
-        self.password = password
+        self.password = ""
+        self.update_password_hash(password)
         self.date_joined = date_joined
-        self.save_user()
+
+        # self.save_user()
 
     def asdict(self):
         return {self.user_name: {"name": self.name, "projects": self.projects, "date_joined": self.date_joined,
@@ -23,3 +26,9 @@ class User:
     def save_user(self):
         user_path = db.reference("root/users/")
         user_path.update(self.asdict())
+
+    def update_password_hash(self, password):
+        password_utf = password.encode('utf-8')
+        sha1hash = hashlib.sha1()
+        sha1hash.update(password_utf)
+        self.password = sha1hash.hexdigest()

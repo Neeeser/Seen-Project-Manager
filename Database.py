@@ -3,6 +3,7 @@ from firebase_admin import credentials
 import firebase_admin
 from User import User
 from Project import Project
+import hashlib
 
 
 class Database:
@@ -13,7 +14,8 @@ class Database:
         self.firebase_address = "seenworkflow_private_key.json"
 
         self.cred = credentials.Certificate(self.firebase_address)
-        firebase_admin.initialize_app(self.cred, {'databaseURL': "https://seenworkflow-default-rtdb.firebaseio.com/"})
+        self.app = firebase_admin.initialize_app(self.cred,
+                                                 {'databaseURL': "https://seenworkflow-default-rtdb.firebaseio.com/"})
         self.root_path = db.reference('root')
         self.users_path = db.reference('root/users')
         self.projects_path = db.reference('root/projects')
@@ -49,6 +51,24 @@ class Database:
 
         print(project.people)
         return True
+
+    def validate_user(self, username, password):
+        if username in self.users:
+            user = self.users[username]
+            if self.password_matches(password, user.password):
+                return True
+            return True
+        return False
+
+    def password_matches(self, password, a_hash):
+        password_utf = password.encode('utf-8')
+        sha1hash = hashlib.sha1()
+        sha1hash.update(password_utf)
+        password_hash = sha1hash.hexdigest()
+        return password_hash == a_hash
+
+    def close(self):
+        firebase_admin.delete_app(self.app)
 
 
 if __name__ == '__main__':
