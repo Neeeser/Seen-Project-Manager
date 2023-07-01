@@ -9,10 +9,10 @@ class DesktopGui:
     def __init__(self):
         ### Fields
         self.max_reports = 6
-        self.reports_row = 2
+        self.reports_row = 1
         self.displayed_project = None
-        sg.theme('BlueMono')  # Add a touch of color
-
+        sg.theme('DarkBlue')  # Add a touch of color
+        self.text_background_color = "gray"
         self.loggedIn = False
         self.user = None
         self.name = ""
@@ -21,6 +21,7 @@ class DesktopGui:
         self.db.load_all_projects()
         self.db.load_all_users()
 
+        # Checks on Start up if logged in already
         self.check_if_logged_in()
 
         # User Login Window
@@ -34,22 +35,26 @@ class DesktopGui:
 
         self.run_login()
 
-        # Main Report Page
-        self.layout = [
-            [sg.Button('Submit'), sg.Button('Exit'), sg.Text(self.name),
-             sg.Button("Logout")],
-            [sg.Combo(values=tuple(self.db.projects.keys()), default_value='None', readonly=False,
-                      k='-COMBO-', enable_events=True, size=30)
+        # Reports Tab
+        self.reports_tab_layout = [
+            [sg.Button('Submit'), sg.Combo(values=tuple(self.db.projects.keys()), default_value='None', readonly=False,
+                                           k='-COMBO-', enable_events=True, size=30)
                 , sg.Text("Project:", visible=False), sg.Text("Owner:", visible=False)]]
         self.setup_reports()
 
-        # text = sg.popup_get_text("Login")
-        # print(text)
-        # self.load_projects_into_layout()
-        self.window = sg.Window('Seen', self.layout)
+        # Tab Layout
+        self.tabs_layout = [[sg.Text(self.name, background_color=self.text_background_color), sg.Button('Exit'),
+                             sg.Button("Logout")],
+                            [sg.TabGroup([[sg.Tab("Dashboard", []), sg.Tab("Reports", self.reports_tab_layout)]])]]
+
+        # Main Page
+        self.window = sg.Window('Seen', self.tabs_layout)
+
+        self.run()
 
     def run_login(self):
-        while self.loggedIn != True:
+
+        while not self.loggedIn:
             self.login_event, self.login_values = self.choice.read()
             if self.login_event in (sg.WIN_CLOSED, 'Exit'):
                 break
@@ -57,7 +62,7 @@ class DesktopGui:
             if self.login_event == 'Cancel':
                 break
 
-            if self.login_event == 'Login':
+            if self.login_event == 'Login' or self.login_event == '\r':
                 username = self.login_values["username"]
                 password = self.login_values["password"]
                 if username != "" and password != "":
@@ -134,11 +139,15 @@ class DesktopGui:
     def setup_reports(self):
         temp_layout = [[], []]
         for i in range(self.max_reports):
-            temp_layout[0].append(sg.Text("NOT DEFINED", visible=False, pad=(1, 0), expand_x=True))
+            temp_layout[0].append(
+                sg.Text("NOT DEFINED", visible=False, pad=(1, 0), background_color=self.text_background_color,
+                        expand_x=True,
+                        justification="center", auto_size_text=False, size=10))
             temp_layout[1].append(
                 sg.Multiline('', size=(30, 10), expand_x=True, expand_y=True, k='report' + str(i),
                              visible=False))
-        self.layout.insert(self.reports_row, temp_layout)
+        self.reports_tab_layout.insert(self.reports_row, temp_layout[0])
+        self.reports_tab_layout.insert(self.reports_row + 1, temp_layout[1])
 
     def submit_report(self):
         if self.displayed_project is None:
@@ -149,16 +158,16 @@ class DesktopGui:
                                                   self.values['report' + str(i)])
 
     def load_project_into_layout(self, project: Project):
-        self.layout[1][1].update(value="Project: " + project.project_name, visible=True)
-        self.layout[1][2].update(value="Owner: " + project.owner, visible=True)
+        self.reports_tab_layout[1][1].update(value="Project: " + project.project_name, visible=True)
+        self.reports_tab_layout[1][2].update(value="Owner: " + project.owner, visible=True)
 
         for i in range(len(project.reports_to)):
-            self.layout[self.reports_row][0][i].update(visible=True, value=project.reports_to[i])
-            self.layout[self.reports_row][1][i].update(visible=True)
+            self.reports_tab_layout[self.reports_row][i].update(visible=True, value=project.reports_to[i])
+            self.reports_tab_layout[self.reports_row + 1][i].update(visible=True)
 
         for i in range(len(project.reports_to), self.max_reports):
-            self.layout[self.reports_row][0][i].update(visible=False)
-            self.layout[self.reports_row][1][i].update(visible=False)
+            self.reports_tab_layout[self.reports_row][i].update(visible=False)
+            self.reports_tab_layout[self.reports_row + 1][i].update(visible=False)
 
 
-DesktopGui().run()
+DesktopGui()
