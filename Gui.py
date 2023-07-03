@@ -2,12 +2,42 @@ import PySimpleGUI as sg
 from Database import Database
 from Project import Project
 import json
+from User import User
+
+
+class ComboPopUp(sg.Window):
+
+    def __init__(self, name: str, options: []):
+        self.layout = [[sg.Listbox(values=options, size=(20, 5), key="listboxpopup",
+                                   enable_events=True, select_mode=sg.SELECT_MODE_MULTIPLE)],
+                       [sg.Button("Accept"), sg.Button("Cancel")]]
+        super().__init__(name, self.layout, disable_close=False, return_keyboard_events=True)
+
+    def get(self) -> []:
+        while True:
+            self.event, self.com_values = self.read()
+            if self.event in (sg.WIN_CLOSED, 'Exit'):
+                break
+
+            if self.event == 'Cancel':
+                break
+
+            if self.event == 'Accept' or self.event == '\r':
+                projects = self.com_values["listboxpopup"]
+                if projects is None:
+                    projects = []
+                self.close()
+
+                return projects
+
+        self.close()
+        return []
 
 
 class DesktopGui:
 
     def __init__(self):
-        ### Fields
+        # Fields
         self.max_reports = 6
         self.reports_row = 1
         self.displayed_project = None
@@ -42,10 +72,18 @@ class DesktopGui:
                 , sg.Text("Owner:", visible=False), sg.Button('Load Latest', key="loadlatest", visible=False)]]
         self.setup_reports()
 
+        # Dashboard tab layout
+        self.dashboard_tab_layout = [[sg.Text("Your Projects")],
+                                     [sg.Listbox(values=self.user.projects, size=(20, 5), key="projectslist",
+                                                 enable_events=True, select_mode=sg),
+                                      sg.Text("", visible=False)],
+                                     [sg.Text("Add yourself to projects:"), sg.Button("Projects", key="addprojects")]]
+
         # Tab Layout
         self.tabs_layout = [[sg.Text(self.name, background_color=self.text_background_color), sg.Button('Exit'),
                              sg.Button("Logout")],
-                            [sg.TabGroup([[sg.Tab("Dashboard", []), sg.Tab("Reports", self.reports_tab_layout)]])]]
+                            [sg.TabGroup([[sg.Tab("Dashboard", self.dashboard_tab_layout),
+                                           sg.Tab("Reports", self.reports_tab_layout)]])]]
 
         # Main Page
         self.window = sg.Window('Seen', self.tabs_layout)
@@ -96,7 +134,17 @@ class DesktopGui:
             if self.event == "loadlatest":
                 self.load_latest_reports()
 
+            if self.event == "projectslist":
+                self.load_project_due_date()
+
+            if self.event == "addprojects":
+                value = ComboPopUp("projects", list(self.db.projects.keys())).get()
+
         self.window.close()
+
+    def load_project_due_date(self):
+        due_date = self.db.projects[self.values["projectslist"][0]].due_date
+        self.dashboard_tab_layout[1][1].update(value="Next report due:\n" + due_date, visible=True)
 
     def login(self, username, password):
         if self.db.validate_user(username, password):
@@ -187,6 +235,14 @@ class DesktopGui:
             multi_line_box_index = self.displayed_project.reports_to.index(group)
             last_report_no_time = latest_reports[group].split('=')[1]
             self.reports_tab_layout[self.reports_row + 1][multi_line_box_index].update(value=last_report_no_time)
+
+    def add_user_to_projects(self, user: User, projects: []):
+        if isinstance(projects, str):
+            projects = [projects]
+
+        for project in projects:
+            if project not in self.user.projects:
+                self.user.projects.append(project)
 
 
 DesktopGui()
