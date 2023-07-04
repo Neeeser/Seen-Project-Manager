@@ -11,7 +11,8 @@ class Project:
         self.owner = owner
         if people is None:
             people = [self.owner]
-        self.people = people
+        self.people = set(people)
+        self.people.discard(None)
         if date_created is None:
             date_created = datetime.date.today().strftime("%B-%d-%Y")
         if due_date is None:
@@ -31,7 +32,7 @@ class Project:
         return (datetime.datetime.now() + timedelta(days)).strftime("%B-%d-%Y")
 
     def asdict(self):
-        return {"owner": self.owner, "people": self.people, "due_date": self.due_date,
+        return {"owner": self.owner, "people": list(self.people), "due_date": self.due_date,
                 "date_created": self.date_created, "reports_to": self.reports_to}
 
     def save_project(self):
@@ -48,7 +49,8 @@ class Project:
 
     def add_user(self, user: str):
         if user not in self.people:
-            self.people.append(user)
+            self.people.add(user)
+            self.people.discard(None)
             self.save_project()
             return True
         return False

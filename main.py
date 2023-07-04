@@ -21,4 +21,4 @@ firebase_admin.initialize_app(cred, {'databaseURL': "https://seenworkflow-defaul
 root = db.reference('root')
 users = db.reference('root/users')
 
-u = User("andrew", "Andrew", "123").save_user()
+u = User("Parag Mehta", "parag", un_hashed_password="123", projects=["Seen Workflow", "Muni SMA"]).save_user()

@@ -23,8 +23,8 @@ class Database:
     def load_all_users(self):
         users_db = self.users_path.get()
         for user in users_db:
-            self.users[user] = User(users_db[user]["name"], user, users_db[user]["password"],
-                                    users_db[user]["date_joined"], projects=users_db[user]["projects"])
+            self.users[user] = User(users_db[user]["name"], user, password=users_db[user]["password"],
+                                    date_joined=users_db[user]["date_joined"], projects=users_db[user]["projects"])
 
     def load_all_projects(self):
         projects_db = self.projects_path.get()
@@ -57,7 +57,14 @@ class Database:
             user = self.users[username]
             if self.password_matches(password, user.password):
                 return True
-            return True
+
+        return False
+
+    def validate_user_hash(self, username, pass_hash):
+        if username in self.users:
+            user = self.users[username]
+            if user.password == pass_hash:
+                return True
         return False
 
     def password_matches(self, password, a_hash):
@@ -69,6 +76,15 @@ class Database:
 
     def close(self):
         firebase_admin.delete_app(self.app)
+
+    def add_user_to_projects(self, user: User, projects: []):
+        if isinstance(projects, str):
+            projects = [projects]
+
+        user.add_to_projects(projects)
+
+        for project in projects:
+            self.projects[project].add_user(user.user_name)
 
 
 if __name__ == '__main__':

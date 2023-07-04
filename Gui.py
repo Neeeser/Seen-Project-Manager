@@ -74,9 +74,9 @@ class DesktopGui:
 
         # Dashboard tab layout
         self.dashboard_tab_layout = [[sg.Text("Your Projects")],
-                                     [sg.Listbox(values=self.user.projects, size=(20, 5), key="projectslist",
+                                     [sg.Listbox(values=list(self.user.projects), size=(20, 5), key="projectslist",
                                                  enable_events=True, select_mode=sg),
-                                      sg.Text("", visible=False)],
+                                      sg.Text("", visible=False, key="duedate")],
                                      [sg.Text("Add yourself to projects:"), sg.Button("Projects", key="addprojects")]]
 
         # Tab Layout
@@ -139,15 +139,31 @@ class DesktopGui:
 
             if self.event == "addprojects":
                 value = ComboPopUp("projects", list(self.db.projects.keys())).get()
+                self.add_user_to_projects(self.user, value)
 
         self.window.close()
 
+    def update_project_lists(self):
+        self.window["projectslist"].update(list(self.user.projects))
+        self.window["-COMBO-"].update(values=tuple(self.user.projects))
+
     def load_project_due_date(self):
-        due_date = self.db.projects[self.values["projectslist"][0]].due_date
-        self.dashboard_tab_layout[1][1].update(value="Next report due:\n" + due_date, visible=True)
+        if self.values["projectslist"][0] is not None:
+            due_date = self.db.projects[self.values["projectslist"][0]].due_date
+            self.window["duedate"].update(value="Next report due:\n" + due_date, visible=True)
+        else:
+            self.window["duedate"].update(value="Next report due:\n", visible=True)
 
     def login(self, username, password):
         if self.db.validate_user(username, password):
+            self.user = self.db.users[username]
+            self.loggedIn = True
+            self.name = self.user.name
+            return True
+        return False
+
+    def login_with_hash(self, username, pass_hash):
+        if self.db.validate_user_hash(username, pass_hash):
             self.user = self.db.users[username]
             self.loggedIn = True
             self.name = self.user.name
@@ -159,8 +175,9 @@ class DesktopGui:
             f = open("users.json")
             data = json.load(f)
             username = data["username"]
-            password = data["password"]
-            self.login(username, password)
+            pass_hash = data["password"]
+            # self.login(username, password)
+            self.login_with_hash(username, pass_hash)
             f.close()
 
         except IOError:
@@ -237,12 +254,8 @@ class DesktopGui:
             self.reports_tab_layout[self.reports_row + 1][multi_line_box_index].update(value=last_report_no_time)
 
     def add_user_to_projects(self, user: User, projects: []):
-        if isinstance(projects, str):
-            projects = [projects]
-
-        for project in projects:
-            if project not in self.user.projects:
-                self.user.projects.append(project)
+        self.db.add_user_to_projects(user, projects)
+        self.update_project_lists()
 
 
 DesktopGui()
