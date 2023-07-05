@@ -8,12 +8,15 @@ from User import User
 class ComboPopUp(sg.Window):
 
     def __init__(self, name: str, options: []):
-        self.layout = [[sg.Listbox(values=options, size=(20, 5), key="listboxpopup",
+        self.options = options
+        self.layout = [[sg.Input(size=(20, 1), enable_events=True, key='-INPUT-')],
+                       [sg.Listbox(values=options, size=(20, 5), key="listboxpopup",
                                    enable_events=True, select_mode=sg.SELECT_MODE_MULTIPLE)],
                        [sg.Button("Accept"), sg.Button("Cancel")]]
         super().__init__(name, self.layout, disable_close=False, return_keyboard_events=True)
 
     def get(self) -> []:
+        self.input_length = 0
         while True:
             self.event, self.com_values = self.read()
             if self.event in (sg.WIN_CLOSED, 'Exit'):
@@ -29,6 +32,14 @@ class ComboPopUp(sg.Window):
                 self.close()
 
                 return projects
+            if self.event != "listboxpopup":
+                if self.com_values['-INPUT-'] != '':  # if a keystroke entered in search field
+                    search = self.com_values['-INPUT-'].lower()
+                    new_values = [x for x in self.options if search in x.lower()]  # do the filtering
+                    self['listboxpopup'].update(new_values)  # display in the listbox
+                else:
+                    # display original unfiltered list
+                    self['listboxpopup'].update(self.options)
 
         self.close()
         return []
@@ -67,9 +78,12 @@ class DesktopGui:
 
         # Reports Tab
         self.reports_tab_layout = [
-            [sg.Button('Submit'), sg.Combo(values=tuple(self.user.projects), default_value='None', readonly=False,
-                                           k='-COMBO-', enable_events=True, size=30)
-                , sg.Text("Owner:", visible=False), sg.Button('Load Latest', key="loadlatest", visible=False)]]
+            [sg.Button('Save'), sg.Button("Submit"),
+             sg.Combo(values=tuple(self.user.projects), default_value='None', readonly=False,
+                      k='-COMBO-', enable_events=True, size=30)
+                , sg.Text("Owner:", visible=False, key="owner"),
+             sg.Button('Load Latest', key="loadlatest", visible=False)
+             ]]
         self.setup_reports()
 
         # Dashboard tab layout
@@ -120,8 +134,8 @@ class DesktopGui:
             if self.event in (sg.WIN_CLOSED, 'Exit'):
                 break
 
-            if self.event == 'Submit':
-                self.submit_report()
+            if self.event == 'Save':
+                self.save_report()
 
             if self.event == '-COMBO-':
                 self.displayed_project = self.db.projects[self.values['-COMBO-']]
@@ -133,6 +147,7 @@ class DesktopGui:
 
             if self.event == "loadlatest":
                 self.load_latest_reports()
+                self.displayed_project.get_sorted_reports()
 
             if self.event == "projectslist":
                 self.load_project_due_date()
@@ -205,19 +220,23 @@ class DesktopGui:
             return False
 
     def setup_reports(self):
-        temp_layout = [[], []]
+        temp_layout = [[], [], []]
         for i in range(self.max_reports):
             temp_layout[0].append(
                 sg.Text("NOT DEFINED", visible=False, pad=(1, 0), background_color=self.text_background_color,
                         expand_x=True,
-                        justification="center", auto_size_text=False, size=10))
+                        justification="center", auto_size_text=False, size=10, key="report_to" + str(i)))
             temp_layout[1].append(
                 sg.Multiline('', size=(30, 10), expand_x=True, expand_y=True, k='report' + str(i),
                              visible=False))
+            temp_layout[2].append(
+                sg.Combo(values=tuple(), default_value='None', k='lastedit' + str(i), enable_events=True, size=30,
+                         visible=False, expand_x=True))
         self.reports_tab_layout.insert(self.reports_row, temp_layout[0])
         self.reports_tab_layout.insert(self.reports_row + 1, temp_layout[1])
+        self.reports_tab_layout.insert(self.reports_row + 2, temp_layout[2])
 
-    def submit_report(self):
+    def save_report(self):
         if self.displayed_project is None:
             return False
 
@@ -233,18 +252,30 @@ class DesktopGui:
                 self.db.load_all_projects()
 
     def load_project_into_layout(self, project: Project):
-        self.reports_tab_layout[0][2].update(value="Owner: " + project.owner, visible=True,
-                                             background_color=self.text_background_color)
+        owner = True if self.user.user_name in project.owner else False
+        self.window["owner"].update(
+            value="Owner: " + list(project.owner).__str__().replace("[", "").replace("]", "").replace("'", ""),
+            visible=True,
+            background_color=self.text_background_color)
 
-        self.reports_tab_layout[0][3].update(visible=True)
+        self.window["loadlatest"].update(visible=True)
 
         for i in range(len(project.reports_to)):
-            self.reports_tab_layout[self.reports_row][i].update(visible=True, value=project.reports_to[i])
-            self.reports_tab_layout[self.reports_row + 1][i].update(visible=True, value="")
+            reports_history = project.get_sorted_reports()
+            value = []
+            if project.reports_to[i] in reports_history:
+                value = [i[:2] for i in reports_history[project.reports_to[i]]]
+            text = ""
+            self.window["report_to" + str(i)].update(visible=True, value=project.reports_to[i])
+            self.window["report" + str(i)].update(visible=True, value=text, disabled=not owner)
+            self.window["lastedit" + str(i)].update(
+                values=value,
+                visible=True)
 
         for i in range(len(project.reports_to), self.max_reports):
-            self.reports_tab_layout[self.reports_row][i].update(visible=False)
-            self.reports_tab_layout[self.reports_row + 1][i].update(visible=False, value="")
+            self.window["report_to" + str(i)].update(visible=False)
+            self.window["report" + str(i)].update(visible=False, value="")
+            self.window["lastedit" + str(i)].update(visible=False)
 
     def load_latest_reports(self):
         latest_reports = self.displayed_project.load_last_report(self.user)

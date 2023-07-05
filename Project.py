@@ -2,15 +2,18 @@ from User import User
 import datetime
 from firebase_admin import db
 from datetime import timedelta
+from datetime import datetime
 
 
 class Project:
 
-    def __init__(self, project_name: str, owner: str, reports_to: [], date_created=None, due_date=None, people=None):
+    def __init__(self, project_name: str, owner: [], reports_to: [], date_created=None, due_date=None, people=None):
         self.project_name = project_name
-        self.owner = owner
+        if isinstance(owner, str):
+            owner = [owner]
+        self.owner = set(owner)
         if people is None:
-            people = [self.owner]
+            people = self.owner
         self.people = set(people)
         self.people.discard(None)
         if date_created is None:
@@ -32,7 +35,7 @@ class Project:
         return (datetime.datetime.now() + timedelta(days)).strftime("%B-%d-%Y")
 
     def asdict(self):
-        return {"owner": self.owner, "people": list(self.people), "due_date": self.due_date,
+        return {"owner": list(self.owner), "people": list(self.people), "due_date": self.due_date,
                 "date_created": self.date_created, "reports_to": self.reports_to}
 
     def save_project(self):
@@ -41,7 +44,7 @@ class Project:
 
     def add_report(self, user: str, report_to: str, report: str, date: str = None):
         if date is None:
-            date = datetime.datetime.now().strftime("%I:%M%p:%B-%d-%Y")
+            date = datetime.now().strftime("%I:%M%p:%B-%d-%Y")
         reports_path = db.reference(
             self.firebase_path + "/reports/" + "/" + report_to + "/" + user)
         print(reports_path.path.__str__())
@@ -75,3 +78,19 @@ class Project:
                     return_dict[group] = list(reports_path[group][user.user_name])[-1]
 
         return return_dict
+
+    def get_sorted_reports(self):
+        reports_path = db.reference(self.firebase_path + "/reports").get()
+        sorted_dict_list = {}
+        if reports_path is not None:
+            for group in reports_path:
+                sorted_dict_list[group] = []
+                for user in reports_path[group]:
+                    for value in reports_path[group][user]:
+                        date, report = value.split('=')
+                        sorted_dict_list[group].append((date, user, report))
+                sorted_dict_list[group] = sorted(sorted_dict_list[group],
+                                                 key=lambda t: datetime.strptime(t[0].split('=')[0],
+                                                                                 '%I:%M%p:%B-%d-%Y'), reverse=True)
+
+        return sorted_dict_list
