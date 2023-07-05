@@ -2,30 +2,32 @@ from User import User
 import datetime
 from firebase_admin import db
 from datetime import timedelta
-from datetime import datetime
 
 
 class Project:
 
-    def __init__(self, project_name: str, owner: [], reports_to: [], date_created=None, due_date=None, people=None):
+    def __init__(self, project_name: str, owner: [], reports_to: [], date_created=None, due_date=None, people=None,
+                 interval=30):
         self.project_name = project_name
         if isinstance(owner, str):
             owner = [owner]
         self.owner = set(owner)
-        if people is None:
+        if people is None or people == []:
             people = self.owner
         self.people = set(people)
         self.people.discard(None)
         if date_created is None:
             date_created = datetime.date.today().strftime("%B-%d-%Y")
+        self.interval = interval
         if due_date is None:
-            due_date = self.get_date_future(30)
+            due_date = self.get_date_future(interval)
         self.due_date = due_date
         self.date_created = date_created
         self.firebase_path = "root/projects/" + self.project_name
         if isinstance(reports_to, str):
             reports_to = [reports_to]
         self.reports_to = reports_to
+        self.report_history = {}
         # self.save_project()
 
     def __contains__(self, item):
@@ -90,7 +92,8 @@ class Project:
                         date, report = value.split('=')
                         sorted_dict_list[group].append((date, user, report))
                 sorted_dict_list[group] = sorted(sorted_dict_list[group],
-                                                 key=lambda t: datetime.strptime(t[0].split('=')[0],
-                                                                                 '%I:%M%p:%B-%d-%Y'), reverse=True)
-
+                                                 key=lambda t: datetime.datetime.strptime(t[0].split('=')[0],
+                                                                                          '%I:%M%p:%B-%d-%Y'),
+                                                 reverse=True)
+        self.report_history = sorted_dict_list
         return sorted_dict_list

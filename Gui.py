@@ -3,17 +3,19 @@ from Database import Database
 from Project import Project
 import json
 from User import User
+from datetime import datetime
 
 
 class ComboPopUp(sg.Window):
 
-    def __init__(self, name: str, options: []):
+    def __init__(self, name: str, options: [], default_values: [] = None):
         self.options = options
         self.layout = [[sg.Input(size=(20, 1), enable_events=True, key='-INPUT-')],
                        [sg.Listbox(values=options, size=(20, 5), key="listboxpopup",
-                                   enable_events=True, select_mode=sg.SELECT_MODE_MULTIPLE)],
+                                   enable_events=True, select_mode=sg.SELECT_MODE_MULTIPLE,
+                                   default_values=default_values)],
                        [sg.Button("Accept"), sg.Button("Cancel")]]
-        super().__init__(name, self.layout, disable_close=False, return_keyboard_events=True)
+        super().__init__(name, self.layout, disable_close=False, return_keyboard_events=True, keep_on_top=True)
 
     def get(self) -> []:
         self.input_length = 0
@@ -32,7 +34,7 @@ class ComboPopUp(sg.Window):
                 self.close()
 
                 return projects
-            if self.event != "listboxpopup":
+            elif self.event != "listboxpopup":
                 if self.com_values['-INPUT-'] != '':  # if a keystroke entered in search field
                     search = self.com_values['-INPUT-'].lower()
                     new_values = [x for x in self.options if search in x.lower()]  # do the filtering
@@ -43,6 +45,87 @@ class ComboPopUp(sg.Window):
 
         self.close()
         return []
+
+
+class CreateProjectPopup(sg.Window):
+    def __init__(self, database: Database):
+        self.layout = [[sg.Text("Project Name:"), sg.Input(size=15, expand_x=True, key="projectname")],
+                       [sg.Button("Owners", expand_x=True, key="owners"),
+                        sg.Button("Groups", expand_x=True, key="groups")],
+                       [sg.Button("People", expand_x=True, key="people")],
+                       [sg.Button("Due Date", expand_x=True, key="date"), sg.Text("Interval:"),
+                        sg.Input(size=5, key="interval", enable_events=True)],
+                       [sg.Text("", key="error", visible=False)],
+                       [sg.Button("Create Project", key="create", expand_x=True)]]
+        super().__init__("Create Project", self.layout, disable_close=False, return_keyboard_events=True,
+                         resizable=True, keep_on_top=True)
+        self.db = database
+        self.owners = []
+        self.people = []
+        self.project_name = ""
+        self.due_date = ""
+        self.interval = None
+        self.groups = []
+
+    def get(self):
+        while True:
+            self.event, self.values = self.read()
+            if self.event in (sg.WIN_CLOSED, 'Exit'):
+                break
+
+            elif self.event == "owners":
+                self.owners = ComboPopUp("Owners", list(self.db.users), list(self.owners)).get()
+
+            elif self.event == "people":
+                self.people = ComboPopUp("People", list(self.db.users), list(self.people)).get()
+
+            elif self.event == "groups":
+                self.groups = ComboPopUp("Groups", list(self.db.groups), list(self.groups)).get()
+
+            elif self.event == "date":
+                date = sg.popup_get_date()
+                if date:
+                    self.due_date = datetime.strptime(str(date[0]) + "/" + str(date[1]) + "/" + str(date[2]),
+                                                      "%m/%d/%Y").strftime("%B-%d-%Y")
+            elif self.event == 'interval':
+                text = self.values['interval']
+                if not self.valid(text):
+                    self['interval'].update(value=text[:-1])
+                else:
+                    self.interval = text
+
+            elif self.event == "create":
+                if self.values["projectname"] == "":
+                    self["error"].update("Please enter a project name", visible=True, text_color="Red")
+                elif self.values["projectname"] in self.db.projects:
+                    self["error"].update("Project Name already Taken", visible=True, text_color="Red")
+
+                elif not self.owners:
+                    self["error"].update("Please select owners", visible=True, text_color="Red")
+                elif not self.groups:
+                    self["error"].update("Please select groups", visible=True, text_color="Red")
+                elif self.due_date == "":
+                    self["error"].update("Please select first due date", visible=True, text_color="Red")
+                else:
+                    v = sg.popup_ok_cancel(
+                        "Are you sure you want to create project: " + self.values["projectname"] + "?")
+                    if v == "OK":
+                        p = Project(self.values["projectname"], self.owners, self.groups, due_date=self.due_date,
+                                    people=self.people, interval=self.interval)
+                        self.close()
+                        return p
+        self.close()
+        return None
+
+    def valid(self, text):
+        if len(text) == 1 and text in '+-':
+            return True
+        else:
+            try:
+                number = float(text)
+                return True
+            except:
+                return False
 
 
 class DesktopGui:
@@ -61,7 +144,7 @@ class DesktopGui:
         self.db = Database()
         self.db.load_all_projects()
         self.db.load_all_users()
-
+        self.db.load_all_groups()
         # Checks on Start up if logged in already
         self.check_if_logged_in()
 
@@ -75,6 +158,11 @@ class DesktopGui:
                                 disable_close=False, return_keyboard_events=True)
 
         self.run_login()
+
+        # Project Tab
+        self.project_tab_layout = [
+            [sg.Text("Manage Projects", size=30, expand_x=True, background_color=self.text_background_color,
+                     justification="center")], [sg.Button("Create Project", key="createproject")]]
 
         # Reports Tab
         self.reports_tab_layout = [
@@ -97,7 +185,8 @@ class DesktopGui:
         self.tabs_layout = [[sg.Text(self.name, background_color=self.text_background_color), sg.Button('Exit'),
                              sg.Button("Logout")],
                             [sg.TabGroup([[sg.Tab("Dashboard", self.dashboard_tab_layout),
-                                           sg.Tab("Reports", self.reports_tab_layout)]])]]
+                                           sg.Tab("Reports", self.reports_tab_layout),
+                                           sg.Tab("Projects", self.project_tab_layout)]])]]
 
         # Main Page
         self.window = sg.Window('Seen', self.tabs_layout)
@@ -152,10 +241,21 @@ class DesktopGui:
             if self.event == "projectslist":
                 self.load_project_due_date()
 
+            if self.event == "createproject":
+                p = CreateProjectPopup(self.db).get()
+                if p:
+                    p.save_project()
             if self.event == "addprojects":
                 value = ComboPopUp("projects", list(self.db.projects.keys())).get()
                 self.add_user_to_projects(self.user, value)
 
+            if "lastedit" in self.event:
+                index = self.window[self.event].widget.current()
+                element_num = self.event.split("lastedit")[1]
+                last_edit = self.values[self.event]
+                value = \
+                    self.displayed_project.report_history[self.displayed_project.reports_to[int(element_num)]][index][2]
+                self.window["report" + str(element_num)].update(value=value)
         self.window.close()
 
     def update_project_lists(self):
@@ -265,6 +365,7 @@ class DesktopGui:
             value = []
             if project.reports_to[i] in reports_history:
                 value = [i[:2] for i in reports_history[project.reports_to[i]]]
+
             text = ""
             self.window["report_to" + str(i)].update(visible=True, value=project.reports_to[i])
             self.window["report" + str(i)].update(visible=True, value=text, disabled=not owner)

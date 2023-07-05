@@ -4,6 +4,7 @@ import firebase_admin
 from User import User
 from Project import Project
 import hashlib
+from Group import Group
 
 
 class Database:
@@ -11,6 +12,7 @@ class Database:
     def __init__(self):
         self.users = {}
         self.projects = {}
+        self.groups = {}
         self.firebase_address = "seenworkflow_private_key.json"
 
         self.cred = credentials.Certificate(self.firebase_address)
@@ -19,6 +21,7 @@ class Database:
         self.root_path = db.reference('root')
         self.users_path = db.reference('root/users')
         self.projects_path = db.reference('root/projects')
+        self.groups_path = db.reference('root/groups')
 
     def load_all_users(self):
         users_db = self.users_path.get()
@@ -34,6 +37,12 @@ class Database:
                                              project_dict["date_created"],
                                              project_dict["due_date"],
                                              project_dict["people"])
+
+    def load_all_groups(self):
+        group_db = self.groups_path.get()
+        for group in group_db:
+            group_dict = group_db[group]
+            self.groups[group] = Group(group, group_dict["users"])
 
     def add_users_to_project(self, project, users: []):
         if isinstance(project, str):
