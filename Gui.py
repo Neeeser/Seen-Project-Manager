@@ -15,14 +15,21 @@ theme = {"BACKGROUND": "#34384b", "TEXT": "#fafafa", "INPUT": "#ffffff", "TEXT_I
 
 class ComboPopUp(sg.Window):
 
-    def __init__(self, name: str, options: [], default_values: [] = None):
+    def __init__(self, name: str, options: [], default_values: [] = None, icon: str = None):
         self.options = options
-        self.layout = [[sg.Input(size=(20, 1), enable_events=True, key='-INPUT-')],
+        self.layout = [[sg.Input(size=(20, 1), enable_events=True, key='-INPUT-', expand_x=True, pad=(0, 0),
+                                 background_color="#34384b", text_color="#ececec")],
                        [sg.Listbox(values=options, size=(20, 5), key="listboxpopup",
                                    enable_events=True, select_mode=sg.SELECT_MODE_MULTIPLE,
-                                   default_values=default_values)],
-                       [sg.Button("Accept"), sg.Button("Cancel")]]
-        super().__init__(name, self.layout, disable_close=False, return_keyboard_events=True, keep_on_top=True)
+                                   default_values=default_values, no_scrollbar=True,
+                                   background_color="#00a758", text_color="#ffffff",
+                                   highlight_background_color="#c6c6c6", highlight_text_color="#ffffff", pad=(0, 0),
+                                   expand_x=True)],
+                       [sg.Button("Accept", expand_x=True, pad=(1, 0), button_color=("#34384b", "#ececec")),
+                        sg.Button("Cancel", expand_x=True, pad=(1, 0), button_color=("#34384b", "#ececec"))]]
+        super().__init__(name, self.layout, disable_close=False, return_keyboard_events=True, keep_on_top=True,
+                         font=("Segoe UI", 15, ""), margins=(0, 0), background_color="#ececec", icon=icon)
+        self.selected = []
 
     def get(self) -> []:
         self.input_length = 0
@@ -41,14 +48,22 @@ class ComboPopUp(sg.Window):
                 self.close()
 
                 return projects
-            elif self.event != "listboxpopup":
+
+            if self.event == "listboxpopup":
+                self.selected = self.com_values["listboxpopup"]
+
+            elif self.event == "-INPUT-":
                 if self.com_values['-INPUT-'] != '':  # if a keystroke entered in search field
                     search = self.com_values['-INPUT-'].lower()
                     new_values = [x for x in self.options if search in x.lower()]  # do the filtering
+                    selected = [x for x in self.selected if x in new_values]
                     self['listboxpopup'].update(new_values)  # display in the listbox
+                    self["listboxpopup"].set_value(selected)
+
                 else:
                     # display original unfiltered list
                     self['listboxpopup'].update(self.options)
+                    self["listboxpopup"].set_value(self.selected)
 
         self.close()
         return []
@@ -218,7 +233,7 @@ class DesktopGui:
         # Main Page
         # self.window = sg.Window('Seen', self.tabs_layout, background_color="grey20", titlebar_text_color="black")
         self.window = sg.Window('Seen', self.tabs_layout, font=("Segoe UI", 15, ""), no_titlebar=False,
-                                margins=(0, 0))
+                                margins=(0, 0), icon="manulife.ico")
         self.run()
 
     def run_login(self):
@@ -278,7 +293,7 @@ class DesktopGui:
                     self.db.load_all_projects()
                     self.update_project_lists()
             if self.event == "addprojects":
-                value = ComboPopUp("projects", list(self.db.projects.keys())).get()
+                value = ComboPopUp("Projects", list(self.db.projects.keys()), icon="manulife.ico").get()
                 self.add_user_to_projects(self.user, value)
 
             if "lastedit" in self.event:
@@ -355,15 +370,16 @@ class DesktopGui:
         temp_layout = [[], [], []]
         for i in range(self.max_reports):
             temp_layout[0].append(
-                sg.Text("NOT DEFINED", visible=False, pad=(1, 0), background_color=self.text_background_color,
+                sg.Text("NOT DEFINED", visible=False, pad=(0, 0), background_color=self.text_background_color,
                         expand_x=True,
                         justification="center", auto_size_text=False, size=10, key="report_to" + str(i)))
             temp_layout[1].append(
                 sg.Multiline('', size=(25, 10), expand_x=True, expand_y=True, k='report' + str(i),
-                             visible=False))
+                             visible=False, no_scrollbar=True, pad=(0, 0)))
             temp_layout[2].append(
                 sg.Combo(values=tuple(), default_value='None', k='lastedit' + str(i), enable_events=True,
-                         visible=False, expand_x=True))
+                         visible=False, expand_x=True, pad=(0, 0), button_arrow_color="#34384b",
+                         button_background_color="#ececec", tooltip="Show Previous Saves"))
         self.reports_tab_layout.insert(self.reports_row, temp_layout[0])
         self.reports_tab_layout.insert(self.reports_row + 1, temp_layout[1])
         self.reports_tab_layout.insert(self.reports_row + 2, temp_layout[2])
@@ -401,7 +417,8 @@ class DesktopGui:
 
             text = ""
             self.window["report_to" + str(i)].update(visible=True, value=project.reports_to[i])
-            self.window["report" + str(i)].update(visible=True, value=text, disabled=not owner)
+            self.window["report" + str(i)].update(visible=True, value=text, disabled=not owner,
+                                                  background_color="#ececec" if not owner else "#ffffff")
             self.window["lastedit" + str(i)].update(
                 values=value,
                 visible=True)
