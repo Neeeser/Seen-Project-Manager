@@ -5,6 +5,13 @@ import json
 from User import User
 from datetime import datetime
 
+theme = {"BACKGROUND": "#34384b", "TEXT": "#fafafa", "INPUT": "#ffffff", "TEXT_INPUT": "#000000",
+         "SCROLL": "#e9dcbe",
+         "BUTTON": ("#ffffff", "#00a758"), "PROGRESS": ('#000000', '#000000'), "BORDER": 1,
+         "TAB": "00a758",
+         "SLIDER_DEPTH": 0, "PROGRESS_DEPTH": 0,
+         "COLOR_LIST": ["#ffffff", "#ffffff", "#ffffff", "#ffffff"], "DESCRIPTION": ["Grey", "Brown"]}
+
 
 class ComboPopUp(sg.Window):
 
@@ -108,7 +115,8 @@ class CreateProjectPopup(sg.Window):
                     self["error"].update("Please select first due date", visible=True, text_color="Red")
                 else:
                     v = sg.popup_ok_cancel(
-                        "Are you sure you want to create project: " + self.values["projectname"] + "?")
+                        "Are you sure you want to create project: " + self.values["projectname"] + "?",
+                        keep_on_top=True)
                     if v == "OK":
                         p = Project(self.values["projectname"], self.owners, self.groups, due_date=self.due_date,
                                     people=self.people, interval=self.interval)
@@ -135,8 +143,10 @@ class DesktopGui:
         self.max_reports = 6
         self.reports_row = 1
         self.displayed_project = None
-        sg.theme('DarkBlue')  # Add a touch of color
-        self.text_background_color = "gray"
+        # sg.theme('DarkGrey4')  # Add a touch of color
+        sg.theme_add_new("Seen Theme", theme)
+        sg.theme("Seen Theme")
+        self.text_background_color = "#00a758"
         self.loggedIn = False
         self.user = None
         self.name = ""
@@ -169,27 +179,46 @@ class DesktopGui:
             [sg.Button('Save'), sg.Button("Submit"),
              sg.Combo(values=tuple(self.user.projects), default_value='None', readonly=False,
                       k='-COMBO-', enable_events=True, size=30)
-                , sg.Text("Owner:", visible=False, key="owner"),
+                , sg.Text("Owner:", visible=False, key="owner", background_color="#ececec", text_color="#34384b"),
              sg.Button('Load Latest', key="loadlatest", visible=False)
              ]]
         self.setup_reports()
 
         # Dashboard tab layout
-        self.dashboard_tab_layout = [[sg.Text("Your Projects")],
-                                     [sg.Listbox(values=list(self.user.projects), size=(20, 5), key="projectslist",
-                                                 enable_events=True, select_mode=sg),
-                                      sg.Text("", visible=False, key="duedate")],
-                                     [sg.Text("Add yourself to projects:"), sg.Button("Projects", key="addprojects")]]
+        self.dashboard_tab_layout = [
+            [sg.Text("Your Projects", font=("Segoe UI", 18, "bold"), text_color="#34384b",
+                     background_color="#ececec"), sg.Push(background_color="#ececec"),
+             sg.Button("Add Projects", key="addprojects", font=("Segoe UI", 13, "bold"), size=(10, 1), pad=(20, 3),
+                       border_width=1)],
+
+            [sg.Listbox(values=list(self.user.projects), size=(25, 8), key="projectslist",
+                        enable_events=True, select_mode=sg, no_scrollbar=True,
+                        background_color="#00a758", text_color="#ffffff",
+                        highlight_background_color="#c6c6c6", highlight_text_color="#ffffff", pad=(0, 0),
+                        font=("Segoe UI", 13, ""), expand_y=True),
+             sg.Text("", visible=False, key="duedate", pad=(0, 0), background_color="#ececec", text_color="#34384b",
+                     font=("Segoe UI", 13, "bold"), expand_y=True)]]
 
         # Tab Layout
-        self.tabs_layout = [[sg.Text(self.name, background_color=self.text_background_color), sg.Button('Exit'),
-                             sg.Button("Logout")],
-                            [sg.TabGroup([[sg.Tab("Dashboard", self.dashboard_tab_layout),
-                                           sg.Tab("Reports", self.reports_tab_layout),
-                                           sg.Tab("Projects", self.project_tab_layout)]])]]
+        self.tabs_layout = [
+            [sg.Text(self.name, font=("Segoe UI", 20, "bold")), sg.Push(),
+             sg.Button("Logout", expand_y=False, size=(7, 1), font=("Segoe UI", 12, "bold")),
+             sg.Button('Exit', expand_y=False, size=(7, 1), font=("Segoe UI", 12, "bold"))
+             ],
+            [sg.TabGroup([[sg.Tab("Dashboard", self.dashboard_tab_layout, background_color="#ececec",
+                                  border_width=0),
+                           sg.Tab("Reports", self.reports_tab_layout, border_width=0, background_color="#ececec"),
+                           sg.Tab("Projects", self.project_tab_layout, border_width=0, background_color="#ececec")]],
+                         border_width=0,
+                         focus_color="clear", background_color="#ececec",
+                         tab_background_color="#ececec", selected_background_color="#c6c6c6",
+                         selected_title_color="black", tab_border_width=0,
+                         pad=(0, 0), expand_y=True)]]
 
         # Main Page
-        self.window = sg.Window('Seen', self.tabs_layout)
+        # self.window = sg.Window('Seen', self.tabs_layout, background_color="grey20", titlebar_text_color="black")
+        self.window = sg.Window('Seen', self.tabs_layout, font=("Segoe UI", 15, ""), no_titlebar=False,
+                                margins=(0, 0))
 
         self.run()
 
@@ -245,6 +274,10 @@ class DesktopGui:
                 p = CreateProjectPopup(self.db).get()
                 if p:
                     p.save_project()
+                    for people in p.people:
+                        self.db.users[people].projects.add(p.project_name)
+                    self.db.load_all_projects()
+                    self.update_project_lists()
             if self.event == "addprojects":
                 value = ComboPopUp("projects", list(self.db.projects.keys())).get()
                 self.add_user_to_projects(self.user, value)
@@ -327,10 +360,10 @@ class DesktopGui:
                         expand_x=True,
                         justification="center", auto_size_text=False, size=10, key="report_to" + str(i)))
             temp_layout[1].append(
-                sg.Multiline('', size=(30, 10), expand_x=True, expand_y=True, k='report' + str(i),
+                sg.Multiline('', size=(25, 10), expand_x=True, expand_y=True, k='report' + str(i),
                              visible=False))
             temp_layout[2].append(
-                sg.Combo(values=tuple(), default_value='None', k='lastedit' + str(i), enable_events=True, size=30,
+                sg.Combo(values=tuple(), default_value='None', k='lastedit' + str(i), enable_events=True,
                          visible=False, expand_x=True))
         self.reports_tab_layout.insert(self.reports_row, temp_layout[0])
         self.reports_tab_layout.insert(self.reports_row + 1, temp_layout[1])
@@ -355,8 +388,7 @@ class DesktopGui:
         owner = True if self.user.user_name in project.owner else False
         self.window["owner"].update(
             value="Owner: " + list(project.owner).__str__().replace("[", "").replace("]", "").replace("'", ""),
-            visible=True,
-            background_color=self.text_background_color)
+            visible=True)
 
         self.window["loadlatest"].update(visible=True)
 
