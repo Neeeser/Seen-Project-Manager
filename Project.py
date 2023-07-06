@@ -46,7 +46,7 @@ class Project:
 
     def add_report(self, user: str, report_to: str, report: str, date: str = None):
         if date is None:
-            date = datetime.now().strftime("%I:%M%p:%B-%d-%Y")
+            date = datetime.datetime.now().strftime("%I:%M%p:%B-%d-%Y")
         reports_path = db.reference(
             self.firebase_path + "/reports/" + "/" + report_to + "/" + user)
         print(reports_path.path.__str__())

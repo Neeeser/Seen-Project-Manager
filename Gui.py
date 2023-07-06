@@ -219,7 +219,6 @@ class DesktopGui:
         # self.window = sg.Window('Seen', self.tabs_layout, background_color="grey20", titlebar_text_color="black")
         self.window = sg.Window('Seen', self.tabs_layout, font=("Segoe UI", 15, ""), no_titlebar=False,
                                 margins=(0, 0))
-
         self.run()
 
     def run_login(self):
@@ -383,6 +382,8 @@ class DesktopGui:
                 self.displayed_project.add_report(self.user.user_name, self.displayed_project.reports_to[i],
                                                   self.values['report' + str(i)])
                 self.db.load_all_projects()
+
+        self.load_project_into_layout(self.displayed_project)
 
     def load_project_into_layout(self, project: Project):
         owner = True if self.user.user_name in project.owner else False
