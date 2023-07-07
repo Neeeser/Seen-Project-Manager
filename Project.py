@@ -20,8 +20,10 @@ class Project:
             date_created = datetime.date.today().strftime("%B-%d-%Y")
         self.interval = interval
         if due_date is None:
-            due_date = self.get_date_future(interval)
+            due_date = [self.get_date_future(interval)]
         self.due_date = due_date
+        if not isinstance(due_date, list):
+            self.due_date = [self.due_date]
         self.date_created = date_created
         self.firebase_path = "root/projects/" + self.project_name
         if isinstance(reports_to, str):
@@ -60,6 +62,12 @@ class Project:
             return True
         return False
 
+    def get_over_due_dates(self):
+        return [x for x in self.due_date if datetime.datetime.strptime(x, "%B-%d-%Y") < datetime.datetime.today()]
+
+    def get_upcoming_due_dates(self):
+        return [x for x in self.due_date if datetime.datetime.strptime(x, "%B-%d-%Y") >= datetime.datetime.today()]
+
     def remove_user(self, user: str):
         if user in self.people and user is not self.owner:
             self.people.remove(user)
@@ -97,3 +105,9 @@ class Project:
                                                  reverse=True)
         self.report_history = sorted_dict_list
         return sorted_dict_list
+
+    def submit_report(self, report: {}, due_date: str):
+        if due_date in self.due_date:
+            self.due_date.remove(due_date)
+            db.reference(self.firebase_path + "/submissions").update({due_date: report})
+            self.save_project()

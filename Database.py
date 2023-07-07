@@ -95,12 +95,17 @@ class Database:
         for project in projects:
             self.projects[project].add_user(user.user_name)
 
+    def get_due_dates(self):
+        due_dates = {}
+        for project in self.projects:
+            due_dates[project] = self.projects[project].due_date
+        return due_dates
+
+    def check_due_dates(self):
+        return
+
 
 if __name__ == '__main__':
     db = Database()
     db.load_all_projects()
-    db.add_users_to_project("Muni Sma", ["buck", "l"])
-    print(db.projects)
-    Project("Ant ETF", "Bob", ["GWAM", "LEN"]).save_project()
-    db.load_all_projects()
-    print(db.projects)
+    print(db.projects["Bond Fund"].get_over_due_dates())

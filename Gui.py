@@ -13,20 +13,42 @@ theme = {"BACKGROUND": "#34384b", "TEXT": "#fafafa", "INPUT": "#ffffff", "TEXT_I
          "COLOR_LIST": ["#ffffff", "#ffffff", "#ffffff", "#ffffff"], "DESCRIPTION": ["Grey", "Brown"]}
 
 
+class PopUp(sg.Window):
+
+    def __init__(self, text: str):
+        self.layout = [[sg.Text(text, background_color="#ececec", text_color="#34384b", font=("Segoe UI", 15, "bold"))],
+                       [sg.Button("Ok", size=10)]]
+
+        super().__init__("", self.layout, disable_close=False, keep_on_top=True, auto_close=True,
+                         auto_close_duration=10, background_color="#ececec", font=("Segoe UI", 15, "bold"),
+                         element_justification="c", resizable=False)
+
+        while True:
+            self.event, self.com_values = self.read()
+            if self.event in (sg.WIN_CLOSED, 'Exit'):
+                break
+
+            if self.event == "Ok":
+                break
+        self.close()
+
+
 class ComboPopUp(sg.Window):
 
     def __init__(self, name: str, options: [], default_values: [] = None, icon: str = None):
         self.options = options
         self.layout = [[sg.Input(size=(20, 1), enable_events=True, key='-INPUT-', expand_x=True, pad=(0, 0),
-                                 background_color="#34384b", text_color="#ececec")],
+                                 background_color="#ececec", text_color="#34384b", border_width=0)],
                        [sg.Listbox(values=options, size=(20, 5), key="listboxpopup",
                                    enable_events=True, select_mode=sg.SELECT_MODE_MULTIPLE,
                                    default_values=default_values, no_scrollbar=True,
                                    background_color="#00a758", text_color="#ffffff",
                                    highlight_background_color="#c6c6c6", highlight_text_color="#ffffff", pad=(0, 0),
                                    expand_x=True)],
-                       [sg.Button("Accept", expand_x=True, pad=(1, 0), button_color=("#34384b", "#ececec")),
-                        sg.Button("Cancel", expand_x=True, pad=(1, 0), button_color=("#34384b", "#ececec"))]]
+                       [sg.Button("Accept", expand_x=True, pad=(3, 3), button_color=("#34384b", "#ececec"),
+                                  font=("Segoe UI", 15, "bold")),
+                        sg.Button("Cancel", expand_x=True, pad=(3, 3), button_color=("#34384b", "#ececec"),
+                                  font=("Segoe UI", 15, "bold"))]]
         super().__init__(name, self.layout, disable_close=False, return_keyboard_events=True, keep_on_top=True,
                          font=("Segoe UI", 15, ""), margins=(0, 0), background_color="#ececec", icon=icon)
         self.selected = []
@@ -69,18 +91,87 @@ class ComboPopUp(sg.Window):
         return []
 
 
+class SubmitPopUp(sg.Window):
+    def __init__(self, project: Project, icon=None):
+        self.project = project
+        self.due_dates = self.project.due_date
+
+        self.layout = [
+            [sg.Text("Which due dates?", expand_x=True, pad=(0, 0), font=("Segoe UI", 20, "bold"))],
+            [sg.Text("Upcoming Due Dates", expand_x=True, size=(12, 3), pad=(0, 0),
+                     background_color="#ececec", text_color="#34384b"),
+             sg.Push(background_color="#ececec"),
+             sg.Listbox(values=self.project.get_upcoming_due_dates(),
+                        size=(25, 3), key="upcoming",
+                        enable_events=True,
+                        expand_x=False,
+                        select_mode=sg.SELECT_MODE_MULTIPLE,
+                        no_scrollbar=True,
+                        background_color="#00a758",
+                        text_color="#ffffff",
+                        highlight_background_color="#c6c6c6",
+                        highlight_text_color="#ffffff", pad=(0, 0),
+                        font=("Segoe UI", 13, ""), expand_y=True)],
+            [sg.Text("Overdue Dates", expand_x=True, size=(12, 3), pad=(0, 0), background_color="#ececec",
+                     text_color="#34384b"),
+             sg.Push(background_color="#ececec"),
+             sg.Listbox(values=self.project.get_over_due_dates(),
+                        size=(25, 3), key="overdue",
+
+                        enable_events=True,
+                        select_mode=sg.SELECT_MODE_MULTIPLE,
+                        no_scrollbar=True,
+                        background_color="#00a758",
+                        text_color="#ffffff",
+                        highlight_background_color="#c6c6c6",
+                        highlight_text_color="#ffffff", pad=(0, 0),
+                        font=("Segoe UI", 13, ""), expand_y=True)],
+            [sg.Button("Accept", expand_x=True, pad=(3, 3), button_color=("#34384b", "#ececec"),
+                       font=("Segoe UI", 15, "bold")),
+             sg.Button("Cancel", expand_x=True, pad=(3, 3), button_color=("#34384b", "#ececec"),
+                       font=("Segoe UI", 15, "bold"))]
+        ]
+
+        super().__init__("Submit Project?", self.layout, disable_close=False, return_keyboard_events=True,
+                         keep_on_top=True,
+                         font=("Segoe UI", 15, ""), margins=(0, 0), background_color="#ececec", icon=icon)
+
+    def get(self):
+        while True:
+            self.event, self.com_values = self.read()
+            if self.event in (sg.WIN_CLOSED, 'Exit'):
+                break
+
+            if self.event == "Cancel":
+                break
+
+            if self.event == "Accept":
+                to_return = []
+                to_return.extend(self["overdue"].get())
+                to_return.extend(self["upcoming"].get())
+
+                self.close()
+                return to_return
+
+        self.close()
+        return None
+
+
 class CreateProjectPopup(sg.Window):
     def __init__(self, database: Database):
-        self.layout = [[sg.Text("Project Name:"), sg.Input(size=15, expand_x=True, key="projectname")],
-                       [sg.Button("Owners", expand_x=True, key="owners"),
-                        sg.Button("Groups", expand_x=True, key="groups")],
-                       [sg.Button("People", expand_x=True, key="people")],
-                       [sg.Button("Due Date", expand_x=True, key="date"), sg.Text("Interval:"),
-                        sg.Input(size=5, key="interval", enable_events=True)],
-                       [sg.Text("", key="error", visible=False)],
-                       [sg.Button("Create Project", key="create", expand_x=True)]]
+        self.layout = [[sg.Text("Project Name:", background_color="#ececec", text_color="#34384b"),
+                        sg.Input(size=15, expand_x=True, key="projectname", expand_y=True)],
+                       [sg.Button("Owners", expand_x=True, key="owners", expand_y=True),
+                        sg.Button("Groups", expand_x=True, key="groups", expand_y=True)],
+                       [sg.Button("People", expand_x=True, key="people", expand_y=True)],
+                       [sg.Button("Due Date", expand_x=True, key="date", expand_y=True),
+                        sg.Push(background_color="#ececec"),
+                        sg.Text("Interval:", background_color="#ececec", text_color="#34384b"),
+                        sg.Input(size=5, key="interval", enable_events=True, expand_y=True, expand_x=True)],
+                       [sg.Text("", key="error", visible=False, expand_y=True, background_color="#ececec")],
+                       [sg.Button("Create Project", key="create", expand_x=True, expand_y=True)]]
         super().__init__("Create Project", self.layout, disable_close=False, return_keyboard_events=True,
-                         resizable=True, keep_on_top=True)
+                         resizable=False, keep_on_top=True, font=("Segoe UI", 15, ""), background_color="#ececec")
         self.db = database
         self.owners = []
         self.people = []
@@ -215,25 +306,28 @@ class DesktopGui:
                      font=("Segoe UI", 13, "bold"), expand_y=True)]]
 
         # Tab Layout
-        self.tabs_layout = [
-            [sg.Text(self.name, font=("Segoe UI", 20, "bold")), sg.Push(),
-             sg.Button("Logout", expand_y=False, size=(7, 1), font=("Segoe UI", 12, "bold")),
-             sg.Button('Exit', expand_y=False, size=(7, 1), font=("Segoe UI", 12, "bold"))
-             ],
-            [sg.TabGroup([[sg.Tab("Dashboard", self.dashboard_tab_layout, background_color="#ececec",
-                                  border_width=0),
-                           sg.Tab("Reports", self.reports_tab_layout, border_width=0, background_color="#ececec"),
-                           sg.Tab("Projects", self.project_tab_layout, border_width=0, background_color="#ececec")]],
-                         border_width=0,
-                         focus_color="clear", background_color="#ececec",
-                         tab_background_color="#ececec", selected_background_color="#c6c6c6",
-                         selected_title_color="black", tab_border_width=0,
-                         pad=(0, 0), expand_y=True)]]
+        self.tabs_layout = [[sg.Text(self.name, font=("Segoe UI", 20, "bold")), sg.Push(),
+                             sg.Button("Logout", expand_y=False, size=(7, 1),
+                                       font=("Segoe UI", 12, "bold")),
+                             sg.Button('Exit', expand_y=False, size=(7, 1),
+                                       font=("Segoe UI", 12, "bold"))
+                             ],
+                            [sg.TabGroup([[sg.Tab("Dashboard", self.dashboard_tab_layout, background_color="#ececec",
+                                                  border_width=0),
+                                           sg.Tab("Reports", self.reports_tab_layout, border_width=0,
+                                                  background_color="#ececec"),
+                                           sg.Tab("Projects", self.project_tab_layout, border_width=0,
+                                                  background_color="#ececec")]],
+                                         border_width=0,
+                                         focus_color="clear", background_color="#ececec",
+                                         tab_background_color="#ececec", selected_background_color="#c6c6c6",
+                                         selected_title_color="black", tab_border_width=0,
+                                         pad=(0, 0), expand_y=True, expand_x=True)]]
 
         # Main Page
         # self.window = sg.Window('Seen', self.tabs_layout, background_color="grey20", titlebar_text_color="black")
         self.window = sg.Window('Seen', self.tabs_layout, font=("Segoe UI", 15, ""), no_titlebar=False,
-                                margins=(0, 0), icon="manulife.ico")
+                                margins=(0, 0), icon="manulife.ico", resizable=True)
         self.run()
 
     def run_login(self):
@@ -268,6 +362,9 @@ class DesktopGui:
 
             if self.event == 'Save':
                 self.save_report()
+
+            if self.event == 'Submit':
+                self.submit_report()
 
             if self.event == '-COMBO-':
                 self.displayed_project = self.db.projects[self.values['-COMBO-']]
@@ -311,7 +408,7 @@ class DesktopGui:
 
     def load_project_due_date(self):
         if self.values["projectslist"][0] is not None:
-            due_date = self.db.projects[self.values["projectslist"][0]].due_date
+            due_date = self.db.projects[self.values["projectslist"][0]].due_date[-1]
             self.window["duedate"].update(value="Next report due:\n" + due_date, visible=True)
         else:
             self.window["duedate"].update(value="Next report due:\n", visible=True)
@@ -383,6 +480,23 @@ class DesktopGui:
         self.reports_tab_layout.insert(self.reports_row, temp_layout[0])
         self.reports_tab_layout.insert(self.reports_row + 1, temp_layout[1])
         self.reports_tab_layout.insert(self.reports_row + 2, temp_layout[2])
+
+    def submit_report(self):
+        if self.displayed_project:
+            for i in range(len(self.displayed_project.reports_to)):
+                if self.values['report' + str(i)] == '':
+                    PopUp("Please fill in all boxes")
+                    return
+
+            due_dates = SubmitPopUp(self.displayed_project).get()
+            if due_dates:
+                report = {}
+                for i in range(len(self.displayed_project.reports_to)):
+                    report[self.displayed_project.reports_to[i]] = self.values['report' + str(i)]
+
+                for due_date in due_dates:
+                    self.displayed_project.submit_report(report, due_date)
+                self.save_report()
 
     def save_report(self):
         if self.displayed_project is None:
