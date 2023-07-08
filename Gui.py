@@ -460,6 +460,7 @@ class DesktopGui:
             json.dump(data, f)
             f.close()
         except IOError:
+            print("Can't access Logout File")
             return False
 
     def logout(self):
