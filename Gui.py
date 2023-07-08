@@ -252,8 +252,8 @@ class DesktopGui:
         self.displayed_project = None
 
         self.userfile = "users.json"
-        if getattr(sys, 'frozen', False):
-            self.userfile = os.path.join(sys._MEIPASS, self.userfile)
+        # if getattr(sys, 'frozen', False):
+        #     self.userfile = os.path.join(sys._MEIPASS, self.userfile)
 
         self.icon = "manulife.ico"
         if getattr(sys, 'frozen', False):
@@ -283,10 +283,48 @@ class DesktopGui:
 
         self.run_login()
 
+        self.manage_project_preface = "manageproject"
+        self.project_edit_layout = [[sg.Text("Project Name:", background_color="#ececec", text_color="#34384b"),
+                                     sg.Input(size=15, expand_x=True, key=self.manage_project_preface + "projectname",
+                                              expand_y=False)],
+                                    [sg.Button("Owners", expand_x=True, key=self.manage_project_preface + "owners",
+                                               expand_y=False),
+                                     sg.Button("Groups", expand_x=True, key=self.manage_project_preface + "groups",
+                                               expand_y=False)],
+                                    [sg.Button("People", expand_x=True, key=self.manage_project_preface + "people",
+                                               expand_y=False)],
+                                    [sg.Button("Due Date", expand_x=True, key=self.manage_project_preface + "date",
+                                               expand_y=False),
+                                     sg.Push(background_color="#ececec"),
+                                     sg.Text("Interval:", background_color="#ececec", text_color="#34384b"),
+                                     sg.Input(size=5, key=self.manage_project_preface + "interval", enable_events=True,
+                                              expand_y=False,
+                                              expand_x=True)],
+                                    [sg.Text("", key=self.manage_project_preface + "error", visible=False,
+                                             expand_y=False,
+                                             background_color="#ececec")],
+                                    [sg.Button("Apply Edits", key=self.manage_project_preface + "create",
+                                               expand_x=True,
+                                               expand_y=False),
+                                     sg.Button("Remove Project", key=self.manage_project_preface + "remove",
+                                               expand_x=False,
+                                               expand_y=False, size=16, button_color="#d03a39")]]
+
         # Project Tab
         self.project_tab_layout = [
-            [sg.Text("Manage Projects", size=30, expand_x=True, background_color=self.text_background_color,
-                     justification="center")], [sg.Button("Create Project", key="createproject")]]
+            [sg.Text("Manage Projects", font=("Segoe UI", 18, "bold"), text_color="#34384b",
+                     background_color="#ececec"), sg.Push(background_color="#ececec"),
+             sg.Button("New Project", key="createproject", font=("Segoe UI", 13, "bold"), size=(10, 1),
+                       pad=((0, 5), 3),
+                       border_width=1)],
+            [sg.Listbox(values=list(self.user.projects), size=(25, 8), key="projectstablist",
+                        enable_events=True, select_mode=sg, no_scrollbar=True,
+                        background_color="#00a758", text_color="#ffffff",
+                        highlight_background_color="#c6c6c6", highlight_text_color="#ffffff", pad=(0, 0),
+                        font=("Segoe UI", 13, ""), expand_y=True),
+             sg.Frame(layout=self.project_edit_layout, title="", size=(400, 300), pad=(0, 0),
+                      background_color="#ececec",
+                      border_width=0, expand_y=True, expand_x=False)]]
 
         # Reports Tab
         self.reports_tab_layout = [
@@ -302,7 +340,7 @@ class DesktopGui:
         self.dashboard_tab_layout = [
             [sg.Text("Your Projects", font=("Segoe UI", 18, "bold"), text_color="#34384b",
                      background_color="#ececec"), sg.Push(background_color="#ececec"),
-             sg.Button("Add Projects", key="addprojects", font=("Segoe UI", 13, "bold"), size=(10, 1), pad=(20, 3),
+             sg.Button("Add Projects", key="addprojects", font=("Segoe UI", 13, "bold"), size=(10, 1), pad=((0, 5), 3),
                        border_width=1)],
 
             [sg.Listbox(values=list(self.user.projects), size=(25, 8), key="projectslist",
@@ -310,8 +348,12 @@ class DesktopGui:
                         background_color="#00a758", text_color="#ffffff",
                         highlight_background_color="#c6c6c6", highlight_text_color="#ffffff", pad=(0, 0),
                         font=("Segoe UI", 13, ""), expand_y=True),
-             sg.Text("", visible=False, key="duedate", pad=(0, 0), background_color="#ececec", text_color="#34384b",
-                     font=("Segoe UI", 13, "bold"), expand_y=True)]]
+             sg.Text("", visible=True, key="duedate", pad=(0, 0), background_color="#ececec", text_color="#34384b",
+                     font=("Segoe UI", 13, "bold"), expand_y=True, size=18),
+             sg.Text("", visible=True, key="overduedate", pad=((0, 0), 0), background_color="#ececec",
+                     text_color="#34384b",
+                     font=("Segoe UI", 13, "bold"), expand_y=True, size=18)
+             ]]
 
         # Tab Layout
         self.tabs_layout = [[sg.Text(self.name, font=("Segoe UI", 20, "bold")), sg.Push(),
@@ -378,6 +420,9 @@ class DesktopGui:
                 self.displayed_project = self.db.projects[self.values['-COMBO-']]
                 self.load_project_into_layout(self.displayed_project)
 
+            if self.event == "projectstablist":
+                self.update_manage_projects()
+
             if self.event == 'Logout':
                 self.window.close()
                 self.logout()
@@ -414,14 +459,23 @@ class DesktopGui:
     def update_project_lists(self):
         self.window["projectslist"].update(list(self.user.projects))
         self.window["-COMBO-"].update(values=tuple(self.user.projects))
+        self.window["projectstablist"].update(values=tuple(self.user.projects))
 
     def load_project_due_date(self):
         if self.values["projectslist"]:
             if self.values["projectslist"][0] is not None:
                 due_date = self.db.projects[self.values["projectslist"][0]].due_date[-1]
+                overdue_dates = self.db.projects[self.values["projectslist"][0]].get_over_due_dates_as_string()
+
                 self.window["duedate"].update(value="Next report due:\n" + due_date, visible=True)
+                if overdue_dates != "":
+                    self.window["overduedate"].update(value="Overdue reports:\n" + overdue_dates, visible=True)
+                else:
+                    self.window["overduedate"].update(value="Overdue reports:\nNone", visible=True)
+
             else:
                 self.window["duedate"].update(value="Next report due:\n", visible=True)
+                self.window["overduedate"].update(value="Overdue reports:\n None", visible=True)
 
     def login(self, username, password):
         if self.db.validate_user(username, password):
@@ -492,6 +546,12 @@ class DesktopGui:
         self.reports_tab_layout.insert(self.reports_row, temp_layout[0])
         self.reports_tab_layout.insert(self.reports_row + 1, temp_layout[1])
         self.reports_tab_layout.insert(self.reports_row + 2, temp_layout[2])
+
+    def update_manage_projects(self):
+        if self.db.projects[self.values['projectstablist'][0]] is not None:
+            self.displayed_project = self.db.projects[self.values['projectstablist'][0]]
+            self.window[self.manage_project_preface + "projectname"].update(value=self.displayed_project.project_name)
+            self.window[self.manage_project_preface + "interval"].update(value=self.displayed_project.interval)
 
     def submit_report(self):
         if self.displayed_project:

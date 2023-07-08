@@ -70,7 +70,14 @@ class Project:
         return False
 
     def get_over_due_dates(self):
-        return [x for x in self.due_date if datetime.datetime.strptime(x, "%B-%d-%Y") < datetime.datetime.today()]
+        return [x for x in self.due_date if datetime.datetime.strptime(x, "%B-%d-%Y").date() < datetime.date.today()]
+
+    def get_over_due_dates_as_string(self):
+        string = ""
+        for over_due in self.get_over_due_dates():
+            string += over_due + "\n"
+
+        return string
 
     def get_upcoming_due_dates(self):
         return [x for x in self.due_date if datetime.datetime.strptime(x, "%B-%d-%Y") >= datetime.datetime.today()]
