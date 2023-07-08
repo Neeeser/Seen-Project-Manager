@@ -343,10 +343,10 @@ class DesktopGui:
         while not self.loggedIn:
             self.login_event, self.login_values = self.choice.read()
             if self.login_event in (sg.WIN_CLOSED, 'Exit'):
-                break
+                sys.exit(0)
 
             if self.login_event == 'Cancel':
-                break
+                sys.exit(0)
 
             if self.login_event == 'Login' or self.login_event == '\r':
                 username = self.login_values["username"]
