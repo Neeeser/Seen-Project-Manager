@@ -97,8 +97,7 @@ class Project:
         return return_dict
 
     def update_due_date(self):
-        duedate = datetime.datetime.strptime(self.due_date[-1], "%B-%d-%Y").date().timetuple()
-        today = datetime.date.today().timetuple()
+
         if datetime.datetime.strptime(self.due_date[-1], "%B-%d-%Y").date() < datetime.date.today():
             self.set_next_due_date()
         self.save_project()
