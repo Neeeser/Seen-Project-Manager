@@ -7,6 +7,8 @@ import json
 from User import User
 from Project import Project
 from Group import Group
+import sys
+import os
 
 
 def load_json_info(root, filename):
@@ -15,7 +17,11 @@ def load_json_info(root, filename):
     root.set(file_contents)
 
 
+dir_path = os.path.dirname(os.path.realpath(__file__))
+print(dir_path)
 firebase_address = "seenworkflow_private_key.json"
+if getattr(sys, 'frozen', False):
+    firebase_address = os.path.join(sys._MEIPASS, "files/bg.png")
 
 cred = credentials.Certificate(firebase_address)
 firebase_admin.initialize_app(cred, {'databaseURL': "https://seenworkflow-default-rtdb.firebaseio.com/"})

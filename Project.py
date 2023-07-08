@@ -15,6 +15,7 @@ class Project:
         if people is None or people == []:
             people = self.owner
         self.people = set(people)
+        self.people.update(owner)
         self.people.discard(None)
         if date_created is None:
             date_created = datetime.date.today().strftime("%B-%d-%Y")
@@ -38,9 +39,15 @@ class Project:
     def get_date_future(self, days: int):
         return (datetime.datetime.now() + timedelta(days)).strftime("%B-%d-%Y")
 
+    def get_date_future_from(self, due_date: str, days: int):
+        return (datetime.datetime.strptime(due_date, "%B-%d-%Y") + timedelta(int(days))).strftime("%B-%d-%Y")
+
+    def set_next_due_date(self):
+        self.due_date.append(self.get_date_future_from(self.due_date[-1], self.interval))
+
     def asdict(self):
         return {"owner": list(self.owner), "people": list(self.people), "due_date": self.due_date,
-                "date_created": self.date_created, "reports_to": self.reports_to}
+                "date_created": self.date_created, "reports_to": self.reports_to, "interval": self.interval}
 
     def save_project(self):
         project_path = db.reference(self.firebase_path)
@@ -89,6 +96,13 @@ class Project:
 
         return return_dict
 
+    def update_due_date(self):
+        duedate = datetime.datetime.strptime(self.due_date[-1], "%B-%d-%Y").date().timetuple()
+        today = datetime.date.today().timetuple()
+        if datetime.datetime.strptime(self.due_date[-1], "%B-%d-%Y").date() < datetime.date.today():
+            self.set_next_due_date()
+        self.save_project()
+
     def get_sorted_reports(self):
         reports_path = db.reference(self.firebase_path + "/reports").get()
         sorted_dict_list = {}
@@ -108,6 +122,7 @@ class Project:
 
     def submit_report(self, report: {}, due_date: str):
         if due_date in self.due_date:
+            self.set_next_due_date()
             self.due_date.remove(due_date)
             db.reference(self.firebase_path + "/submissions").update({due_date: report})
             self.save_project()

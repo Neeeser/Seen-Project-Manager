@@ -4,6 +4,7 @@ from Project import Project
 import json
 from User import User
 from datetime import datetime
+import sys, os
 
 theme = {"BACKGROUND": "#34384b", "TEXT": "#fafafa", "INPUT": "#ffffff", "TEXT_INPUT": "#000000",
          "SCROLL": "#e9dcbe",
@@ -177,7 +178,7 @@ class CreateProjectPopup(sg.Window):
         self.people = []
         self.project_name = ""
         self.due_date = ""
-        self.interval = None
+        self.interval = 30
         self.groups = []
 
     def get(self):
@@ -249,6 +250,15 @@ class DesktopGui:
         self.max_reports = 6
         self.reports_row = 1
         self.displayed_project = None
+
+        self.userfile = "users.json"
+        if getattr(sys, 'frozen', False):
+            self.userfile = os.path.join(sys._MEIPASS, self.userfile)
+
+        self.icon = "manulife.ico"
+        if getattr(sys, 'frozen', False):
+            self.icon = os.path.join(sys._MEIPASS, self.icon)
+
         # sg.theme('DarkGrey4')  # Add a touch of color
         sg.theme_add_new("Seen Theme", theme)
         sg.theme("Seen Theme")
@@ -258,9 +268,7 @@ class DesktopGui:
         self.name = ""
         # Creating Database and loading the projects into it
         self.db = Database()
-        self.db.load_all_projects()
-        self.db.load_all_users()
-        self.db.load_all_groups()
+        self.db.load_all()
         # Checks on Start up if logged in already
         self.check_if_logged_in()
 
@@ -327,7 +335,7 @@ class DesktopGui:
         # Main Page
         # self.window = sg.Window('Seen', self.tabs_layout, background_color="grey20", titlebar_text_color="black")
         self.window = sg.Window('Seen', self.tabs_layout, font=("Segoe UI", 15, ""), no_titlebar=False,
-                                margins=(0, 0), icon="manulife.ico", resizable=True)
+                                margins=(0, 0), icon=self.icon, resizable=True)
         self.run()
 
     def run_login(self):
@@ -387,10 +395,11 @@ class DesktopGui:
                     p.save_project()
                     for people in p.people:
                         self.db.users[people].projects.add(p.project_name)
+                        self.db.users[people].save_user()
                     self.db.load_all_projects()
                     self.update_project_lists()
             if self.event == "addprojects":
-                value = ComboPopUp("Projects", list(self.db.projects.keys()), icon="manulife.ico").get()
+                value = ComboPopUp("Projects", list(self.db.projects.keys()), icon=self.icon).get()
                 self.add_user_to_projects(self.user, value)
 
             if "lastedit" in self.event:
@@ -407,11 +416,12 @@ class DesktopGui:
         self.window["-COMBO-"].update(values=tuple(self.user.projects))
 
     def load_project_due_date(self):
-        if self.values["projectslist"][0] is not None:
-            due_date = self.db.projects[self.values["projectslist"][0]].due_date[-1]
-            self.window["duedate"].update(value="Next report due:\n" + due_date, visible=True)
-        else:
-            self.window["duedate"].update(value="Next report due:\n", visible=True)
+        if self.values["projectslist"]:
+            if self.values["projectslist"][0] is not None:
+                due_date = self.db.projects[self.values["projectslist"][0]].due_date[-1]
+                self.window["duedate"].update(value="Next report due:\n" + due_date, visible=True)
+            else:
+                self.window["duedate"].update(value="Next report due:\n", visible=True)
 
     def login(self, username, password):
         if self.db.validate_user(username, password):
@@ -431,7 +441,8 @@ class DesktopGui:
 
     def check_if_logged_in(self):
         try:
-            f = open("users.json")
+
+            f = open(self.userfile)
             data = json.load(f)
             username = data["username"]
             pass_hash = data["password"]
@@ -444,7 +455,7 @@ class DesktopGui:
 
     def save_login_info(self):
         try:
-            f = open("users.json", 'w+')
+            f = open(self.userfile, 'w+')
             data = {"username": self.user.user_name, "password": self.user.password}
             json.dump(data, f)
             f.close()
@@ -453,7 +464,7 @@ class DesktopGui:
 
     def logout(self):
         try:
-            f = open("users.json", 'w+')
+            f = open(self.userfile, 'w+')
             data = {"username": "", "password": ""}
             json.dump(data, f)
             self.db.close()
