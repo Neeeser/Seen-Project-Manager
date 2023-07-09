@@ -363,11 +363,12 @@ class DesktopGui:
                                        font=("Segoe UI", 12, "bold"))
                              ],
                             [sg.TabGroup([[sg.Tab("Dashboard", self.dashboard_tab_layout, background_color="#ececec",
-                                                  border_width=0),
+                                                  border_width=0, key="dashboardtab"),
                                            sg.Tab("Reports", self.reports_tab_layout, border_width=0,
-                                                  background_color="#ececec"),
+                                                  background_color="#ececec", key="reporttab"),
                                            sg.Tab("Projects", self.project_tab_layout, border_width=0,
-                                                  background_color="#ececec")]],
+                                                  background_color="#ececec", key="projecttab")]], enable_events=True,
+                                         key="tabs",
                                          border_width=0,
                                          focus_color="clear", background_color="#ececec",
                                          tab_background_color="#ececec", selected_background_color="#c6c6c6",
@@ -377,7 +378,8 @@ class DesktopGui:
         # Main Page
         # self.window = sg.Window('Seen', self.tabs_layout, background_color="grey20", titlebar_text_color="black")
         self.window = sg.Window('Seen', self.tabs_layout, font=("Segoe UI", 15, ""), no_titlebar=False,
-                                margins=(0, 0), icon=self.icon, resizable=True)
+                                margins=(0, 0), icon=self.icon, resizable=True, finalize=True)
+        self.window.set_min_size((627, 400))
         self.run()
 
     def run_login(self):
@@ -421,11 +423,25 @@ class DesktopGui:
                 self.load_project_into_layout(self.displayed_project)
 
             if self.event == "projectstablist":
+                self.displayed_project = self.db.projects[self.values['projectstablist'][0]]
                 self.update_manage_projects()
 
             if self.event == 'Logout':
                 self.window.close()
                 self.logout()
+
+            if self.values["tabs"] == "projecttab":
+                if self.displayed_project is not None:
+                    self.update_manage_projects()
+
+            if self.values["tabs"] == "reporttab":
+                if self.displayed_project is not None:
+                    self.load_project_into_layout(self.displayed_project)
+
+            if self.event == self.manage_project_preface + "remove":
+                if self.displayed_project is not None:
+                    sg.popup_yes_no(title="Remove" + self.displayed_project.project_name)
+                    self.remove_project(self.displayed_project)
 
             if self.event == "loadlatest":
                 self.load_latest_reports()
@@ -548,8 +564,8 @@ class DesktopGui:
         self.reports_tab_layout.insert(self.reports_row + 2, temp_layout[2])
 
     def update_manage_projects(self):
-        if self.db.projects[self.values['projectstablist'][0]] is not None:
-            self.displayed_project = self.db.projects[self.values['projectstablist'][0]]
+        if self.displayed_project is not None or self.db.projects[self.values['projectstablist'][0]] is not None:
+            self.window["projectstablist"].set_value([self.displayed_project.project_name])
             self.window[self.manage_project_preface + "projectname"].update(value=self.displayed_project.project_name)
             self.window[self.manage_project_preface + "interval"].update(value=self.displayed_project.interval)
 
@@ -589,6 +605,8 @@ class DesktopGui:
 
     def load_project_into_layout(self, project: Project):
         owner = True if self.user.user_name in project.owner else False
+        self.window["-COMBO-"].update(value=self.displayed_project.project_name)
+
         self.window["owner"].update(
             value="Owner: " + list(project.owner).__str__().replace("[", "").replace("]", "").replace("'", ""),
             visible=True)
@@ -623,6 +641,18 @@ class DesktopGui:
 
     def add_user_to_projects(self, user: User, projects: []):
         self.db.add_user_to_projects(user, projects)
+        self.update_project_lists()
+
+    def clear_manage_project(self):
+        self.window["projectstablist"].set_value(None)
+        self.window[self.manage_project_preface + "projectname"].update(value="")
+        self.window[self.manage_project_preface + "interval"].update(value="")
+
+    def remove_project(self, project: Project):
+        self.clear_manage_project()
+        self.setup_reports()
+        self.displayed_project = None
+        self.db.remove_project(project)
         self.update_project_lists()
 
 

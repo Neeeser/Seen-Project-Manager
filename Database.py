@@ -122,6 +122,15 @@ class Database:
         for project in self.projects:
             self.projects[project].update_due_date()
 
+    def remove_project(self, project: Project):
+        # Step 1 remove project from people:
+        for people in project.people:
+            self.users[people].remove_from_project(project.project_name)
+        # Step 2 Remove project from firebase
+        db.reference(project.firebase_path).delete()
+        # Step 3 remove project from database
+        self.projects.pop(project.project_name)
+
 
 if __name__ == '__main__':
     db = Database()

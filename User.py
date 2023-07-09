@@ -44,3 +44,10 @@ class User:
         self.projects.update(projects)
         self.projects.discard(None)
         self.save_user()
+
+    def remove_from_project(self, project_name: str):
+        try:
+            self.projects.remove(project_name)
+            self.save_user()
+        except:
+            print("Issue removing project:" + project_name + " from user " + self.user_name)
