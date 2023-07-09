@@ -300,15 +300,16 @@ class DesktopGui:
                                      sg.Input(size=5, key=self.manage_project_preface + "interval", enable_events=True,
                                               expand_y=False,
                                               expand_x=True)],
-                                    [sg.Text("", key=self.manage_project_preface + "error", visible=False,
-                                             expand_y=False,
-                                             background_color="#ececec")],
+
                                     [sg.Button("Apply Edits", key=self.manage_project_preface + "create",
                                                expand_x=True,
                                                expand_y=False),
                                      sg.Button("Remove Project", key=self.manage_project_preface + "remove",
                                                expand_x=False,
-                                               expand_y=False, size=16, button_color="#d03a39")]]
+                                               expand_y=False, size=16, button_color="#d03a39")],
+                                    [sg.Text("", key=self.manage_project_preface + "error", visible=False,
+                                             expand_y=False,
+                                             background_color="#ececec")]]
 
         # Project Tab
         self.project_tab_layout = [
@@ -440,9 +441,13 @@ class DesktopGui:
 
             if self.event == self.manage_project_preface + "remove":
                 if self.displayed_project is not None:
-                    sg.popup_yes_no(title="Remove" + self.displayed_project.project_name)
-                    self.remove_project(self.displayed_project)
-
+                    if self.user.user_name in self.displayed_project.owner:
+                        sg.popup_yes_no(title="Remove" + self.displayed_project.project_name)
+                        self.remove_project(self.displayed_project)
+                    else:
+                        self.window[self.manage_project_preface + "error"].update(visible=True,
+                                                                                  value="User is not owner",
+                                                                                  text_color="red")
             if self.event == "loadlatest":
                 self.load_latest_reports()
                 self.displayed_project.get_sorted_reports()
@@ -565,9 +570,19 @@ class DesktopGui:
 
     def update_manage_projects(self):
         if self.displayed_project is not None or self.db.projects[self.values['projectstablist'][0]] is not None:
+            button_color = "#ffffff"
+            disabled = False
+            if self.user.user_name not in self.displayed_project.owner:
+                button_color = "#858585"
+                disabled = True
             self.window["projectstablist"].set_value([self.displayed_project.project_name])
-            self.window[self.manage_project_preface + "projectname"].update(value=self.displayed_project.project_name)
-            self.window[self.manage_project_preface + "interval"].update(value=self.displayed_project.interval)
+            self.window[self.manage_project_preface + "projectname"].update(value=self.displayed_project.project_name,
+                                                                            disabled=disabled,
+                                                                            background_color=button_color)
+            self.window[self.manage_project_preface + "interval"].update(value=self.displayed_project.interval,
+                                                                         disabled=disabled,
+                                                                         background_color=button_color)
+            self.window[self.manage_project_preface + "error"].update(visible=False)
 
     def submit_report(self):
         if self.displayed_project:
@@ -647,6 +662,7 @@ class DesktopGui:
         self.window["projectstablist"].set_value(None)
         self.window[self.manage_project_preface + "projectname"].update(value="")
         self.window[self.manage_project_preface + "interval"].update(value="")
+        self.window[self.manage_project_preface + "error"].update(visible=False)
 
     def remove_project(self, project: Project):
         self.clear_manage_project()
