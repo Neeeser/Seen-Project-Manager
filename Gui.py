@@ -14,6 +14,152 @@ theme = {"BACKGROUND": "#34384b", "TEXT": "#fafafa", "INPUT": "#ffffff", "TEXT_I
          "COLOR_LIST": ["#ffffff", "#ffffff", "#ffffff", "#ffffff"], "DESCRIPTION": ["Grey", "Brown"]}
 
 
+class DueDateEditor(sg.Window):
+
+    def __init__(self, project: Project, icon=None):
+        self.project = project
+        self.top_button_size = 8
+        self.top_expand = True
+        self.top_pad = (3, 5)
+
+        self.temp_project = Project("NULL", [], [], due_date=project.due_date.copy())
+
+        self.layout = [
+            [sg.Text("Which due dates?", expand_x=True, pad=(0, 0), font=("Segoe UI", 20, "bold"))],
+            [sg.Text("Upcoming Due Dates", expand_x=True, size=(12, 3), pad=(0, 0),
+                     background_color="#ececec", text_color="#34384b"),
+             sg.Push(background_color="#ececec"),
+             sg.Listbox(values=self.project.get_upcoming_due_dates(),
+                        size=(25, 3), key="upcoming",
+                        enable_events=True,
+                        expand_x=False,
+                        select_mode=sg.SELECT_MODE_SINGLE,
+                        no_scrollbar=True,
+                        background_color="#00a758",
+                        text_color="#ffffff",
+                        highlight_background_color="#c6c6c6",
+                        highlight_text_color="#ffffff", pad=(0, 0),
+                        font=("Segoe UI", 13, ""), expand_y=True)],
+            [sg.Text("Overdue Dates", expand_x=True, size=(12, 3), pad=(0, 0), background_color="#ececec",
+                     text_color="#34384b"),
+             sg.Push(background_color="#ececec"),
+             sg.Listbox(values=self.project.get_over_due_dates(),
+                        size=(25, 3), key="overdue",
+
+                        enable_events=True,
+                        select_mode=sg.SELECT_MODE_SINGLE,
+                        no_scrollbar=True,
+                        background_color="#00a758",
+                        text_color="#ffffff",
+                        highlight_background_color="#c6c6c6",
+                        highlight_text_color="#ffffff", pad=(0, 0),
+                        font=("Segoe UI", 13, ""), expand_y=True)],
+
+            [sg.Button("New", size=self.top_button_size, expand_x=self.top_expand, pad=self.top_pad),
+             sg.Button("Edit", size=self.top_button_size, expand_x=self.top_expand, pad=self.top_pad),
+             sg.Button("Remove", size=self.top_button_size, expand_x=self.top_expand, pad=self.top_pad,
+                       button_color="#d03a39")],
+            [sg.Button("Accept", expand_x=True, pad=(3, 3), button_color=("#34384b", "#ececec"),
+                       font=("Segoe UI", 15, "bold")),
+             sg.Button("Cancel", expand_x=True, pad=(3, 3), button_color=("#34384b", "#ececec"),
+                       font=("Segoe UI", 15, "bold"))]
+        ]
+
+        super().__init__("Edit Due Dates?", self.layout, disable_close=False, return_keyboard_events=True,
+                         keep_on_top=True,
+                         font=("Segoe UI", 15, ""), margins=(0, 0), background_color="#ececec", icon=icon)
+
+    def run(self):
+        while True:
+            self.event, self.com_values = self.read()
+            if self.event in (sg.WIN_CLOSED, 'Exit'):
+                break
+
+            if self.event == "upcoming":
+                self["overdue"].set_value("")
+
+            elif self.event == "overdue":
+                self["upcoming"].set_value("")
+
+            if self.event == "New":
+                date = sg.popup_get_date()
+                if date:
+                    date = datetime.strptime(str(date[0]) + "/" + str(date[1]) + "/" + str(date[2]),
+                                             "%m/%d/%Y").date()
+                    self.temp_project.add_new_due_date(date)
+                    self.update_boxes_temp_project()
+
+            if self.event == "Remove":
+                if self.get_selected():
+                    self.temp_project.due_date.remove(self.get_selected()[0])
+                    self.update_boxes_temp_project()
+
+            elif self.event == "Edit":
+                if self.get_selected():
+                    date = sg.popup_get_date()
+                    if date:
+                        new_date = datetime.strptime(str(date[0]) + "/" + str(date[1]) + "/" + str(date[2]),
+                                                     "%m/%d/%Y")
+                        self.temp_project.due_date.remove(self.get_selected()[0])
+                        self.temp_project.add_new_due_date(new_date)
+                        self.update_boxes_temp_project()
+
+            elif self.event == "Accept":
+                if YesNoPopup("Apply to " + self.project.project_name + "?").get():
+                    self.project.due_date = self.temp_project.due_date.copy()
+                    self.project.save_project()
+                self.close()
+
+            elif self.event == "Cancel":
+                self.close()
+                return None
+
+        self.close()
+        return
+
+    def get_selected(self):
+        upcoming = self["upcoming"].get()
+        overdue = self["overdue"].get()
+
+        if upcoming:
+            return upcoming
+        elif overdue:
+            return overdue
+        else:
+            return None
+
+    def update_boxes_temp_project(self):
+        self["upcoming"].update(values=self.temp_project.get_upcoming_due_dates())
+        self["overdue"].update(values=self.temp_project.get_over_due_dates())
+
+
+class YesNoPopup(sg.Window):
+    def __init__(self, text):
+        self.layout = [[sg.Text(text, background_color="#ececec", text_color="#34384b", font=("Segoe UI", 15, "bold"),
+                                justification="c")],
+                       [sg.Button("Yes", size=10), sg.Button("No", size=10)]]
+
+        super().__init__("", self.layout, disable_close=False, keep_on_top=True, background_color="#ececec",
+                         font=("Segoe UI", 15, "bold"),
+                         element_justification="c", resizable=False)
+
+    def get(self):
+        while True:
+            self.event, self.com_values = self.read()
+            if self.event in (sg.WIN_CLOSED, 'Exit'):
+                break
+
+            if self.event == "Yes":
+                self.close()
+                return True
+
+            if self.event == "No":
+                self.close()
+                return False
+
+        self.close()
+
+
 class ProjectEditFrame(sg.Frame):
 
     def __init__(self):
@@ -301,7 +447,8 @@ class DesktopGui:
         self.temp_owners = set()
         self.temp_people = set()
         self.temp_groups = set()
-        self.temp_duedate = set()
+        self.temp_duedate_text = ""
+        self.temp_duedates = []
         self.userfile = "users.json"
         # if getattr(sys, 'frozen', False):
         #     self.userfile = os.path.join(sys._MEIPASS, self.userfile)
@@ -405,7 +552,7 @@ class DesktopGui:
         # self.window = sg.Window('Seen', self.tabs_layout, background_color="grey20", titlebar_text_color="black")
         self.window = sg.Window('Seen', self.tabs_layout, font=("Segoe UI", 15, ""), no_titlebar=False,
                                 margins=(0, 0), icon=self.icon, resizable=True, finalize=True)
-        self.window.set_min_size((627, 420))
+        self.window.set_min_size((627, 470))
         self.run()
 
     def run_login(self):
@@ -478,8 +625,8 @@ class DesktopGui:
             if self.event == self.manage_project_preface + "remove":
                 if self.displayed_project is not None:
                     if self.user.user_name in self.displayed_project.owner:
-                        sg.popup_yes_no(title="Remove" + self.displayed_project.project_name)
-                        self.remove_project(self.displayed_project)
+                        if YesNoPopup("Are you sure you want to remove:\n" + self.displayed_project.project_name).get():
+                            self.remove_project(self.displayed_project)
                     else:
                         self.window[self.manage_project_preface + "error"].update(visible=True,
                                                                                   value="User is not owner",
@@ -505,6 +652,13 @@ class DesktopGui:
                     self.window[self.manage_project_preface + "groupstext"].update(
                         self.temp_groups.__str__().replace("{", "").replace("}", "").replace("'", ""),
                         text_color="#34384b")
+
+            elif self.event == self.manage_project_preface + "date":
+                if self.displayed_project:
+                    DueDateEditor(self.displayed_project).run()
+                    self.set_temp_values()
+                    self.update_manage_projects()
+
             if self.event == "loadlatest":
                 self.load_latest_reports()
                 self.displayed_project.get_sorted_reports()
@@ -628,18 +782,35 @@ class DesktopGui:
 
     def update_manage_projects(self):
         if self.displayed_project is not None or self.db.projects[self.values['projectstablist'][0]] is not None:
-            button_color = "#ffffff"
+            text_background_color = "#ffffff"
+            button_color = ("#ffffff", "#00a758")
             disabled = False
             if self.user.user_name not in self.displayed_project.owner:
-                button_color = "#858585"
+                button_color = ("#34384b", "#b9b9b9")
+                text_background_color = "#858585"
                 disabled = True
             self.window["projectstablist"].set_value([self.displayed_project.project_name])
             self.window[self.manage_project_preface + "projectname"].update(value=self.displayed_project.project_name,
                                                                             disabled=disabled,
-                                                                            background_color=button_color)
+                                                                            background_color=text_background_color)
             self.window[self.manage_project_preface + "interval"].update(value=self.displayed_project.interval,
                                                                          disabled=disabled,
-                                                                         background_color=button_color)
+                                                                         background_color=text_background_color)
+            self.window[self.manage_project_preface + "owners"].update(disabled=disabled,
+                                                                       button_color=button_color,
+                                                                       disabled_button_color=("#34384b", "#34384b"))
+            self.window[self.manage_project_preface + "groups"].update(disabled=disabled,
+                                                                       button_color=button_color,
+                                                                       disabled_button_color=("#34384b", "#34384b"))
+            self.window[self.manage_project_preface + "people"].update(disabled=disabled,
+                                                                       button_color=button_color,
+                                                                       disabled_button_color=("#34384b", "#34384b"))
+            self.window[self.manage_project_preface + "date"].update(disabled=disabled,
+                                                                     button_color=button_color,
+                                                                     disabled_button_color=("#34384b", "#34384b"))
+            # self.window[self.manage_project_preface + "create"].update(disabled=disabled,
+            #                                                            button_color=button_color,
+            #                                                            disabled_button_color=("#34384b", "#34384b"))
 
             self.window[self.manage_project_preface + "ownerstext"].update(
                 self.temp_owners.__str__().replace("{", "").replace("}", "").replace("'", ""),
@@ -654,7 +825,7 @@ class DesktopGui:
                 text_color="#34384b")
 
             self.window[self.manage_project_preface + "duedatetext"].update(
-                self.temp_duedate.__str__().replace("{", "").replace("}", "").replace("'", ""),
+                self.temp_duedate_text.__str__().replace("{", "").replace("}", "").replace("'", ""),
                 text_color="#34384b")
 
             self.window[self.manage_project_preface + "error"].update(visible=False)
@@ -738,6 +909,11 @@ class DesktopGui:
         self.window[self.manage_project_preface + "projectname"].update(value="")
         self.window[self.manage_project_preface + "interval"].update(value="")
         self.window[self.manage_project_preface + "error"].update(visible=False)
+        self.window[self.manage_project_preface + "ownerstext"].update(value="")
+        self.window[self.manage_project_preface + "groupstext"].update(value="")
+        self.window[self.manage_project_preface + "peopletext"].update(value="")
+        self.window[self.manage_project_preface + "duedatetext"].update(value="")
+        self.reset_temp_values()
 
     def remove_project(self, project: Project):
         self.clear_manage_project()
@@ -750,14 +926,14 @@ class DesktopGui:
         self.temp_groups = set()
         self.temp_people = set()
         self.temp_owners = set()
-        self.temp_duedate = ""
+        self.temp_duedate_text = ""
 
     def set_temp_values(self):
         self.temp_people = self.displayed_project.people
         self.temp_owners = self.displayed_project.owner
         self.temp_groups = self.displayed_project.reports_to
         duedate = datetime.strptime(self.displayed_project.due_date[0], "%B-%d-%Y").strftime("%m/%d/%y")
-        self.temp_duedate = duedate
+        self.temp_duedate_text = duedate
 
 
 DesktopGui()

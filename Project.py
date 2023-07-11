@@ -80,7 +80,7 @@ class Project:
         return string
 
     def get_upcoming_due_dates(self):
-        return [x for x in self.due_date if datetime.datetime.strptime(x, "%B-%d-%Y") >= datetime.datetime.today()]
+        return [x for x in self.due_date if datetime.datetime.strptime(x, "%B-%d-%Y").date() >= datetime.date.today()]
 
     def remove_user(self, user: str):
         if user in self.people and user is not self.owner:
@@ -132,3 +132,29 @@ class Project:
             self.due_date.remove(due_date)
             db.reference(self.firebase_path + "/submissions").update({due_date: report})
             self.save_project()
+
+    def add_new_due_date(self, due_date: datetime.date):
+        due_date_str = due_date.strftime("%B-%d-%Y")
+        inserted = False
+        if due_date_str not in self.due_date:
+
+            for i in range(len(self.due_date) - 1):
+                d = datetime.datetime.strptime(self.due_date[i], "%B-%d-%Y").date()
+                d_next = datetime.datetime.strptime(self.due_date[i + 1], "%B-%d-%Y").date()
+
+                if d.__eq__(due_date) or d_next.__eq__(due_date):
+                    return
+
+                if i == 0:
+                    if due_date < d:
+                        self.due_date.insert(0, due_date_str)
+                        return
+                if d <= due_date <= d_next:
+                    self.due_date.insert(i + 1, due_date_str)
+                    return
+
+            if len(self.due_date) == 1:
+                if due_date < datetime.datetime.strptime(self.due_date[0], "%B-%d-%Y").date():
+                    self.due_date.insert(0, due_date_str)
+                    return
+            self.due_date.append(due_date_str)

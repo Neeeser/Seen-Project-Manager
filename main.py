@@ -1,3 +1,4 @@
+import datetime
 import time
 
 import firebase_admin
@@ -29,5 +30,8 @@ root = db.reference('root')
 users = db.reference('root/users')
 
 # u = User("Parag Mehta", "parag", un_hashed_password="123", projects=["Seen Workflow", "Muni SMA"]).save_user()
-# p = Project("Seen WorkFlow", ["Andrew", "Parag"], ["Parag", "GWAM"]).save_project()
-Group("GWAM", ["parag"]).save_group()
+p = Project("Seen WorkFlow", ["Andrew", "Parag"], ["Parag", "GWAM"], due_date=[])
+
+p.add_new_due_date(datetime.datetime.strptime("July-11-2023", "%B-%d-%Y").date())
+
+print(p.due_date.__str__())
