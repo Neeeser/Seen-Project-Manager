@@ -613,10 +613,9 @@ class DesktopGui:
                     if self.displayed_project is not None:
                         self.set_temp_values()
                         self.update_manage_projects()
-
-            if self.values["tabs"] == "reporttab":
-                if self.displayed_project is not None:
-                    self.load_project_into_layout(self.displayed_project)
+                if self.values["tabs"] == "reporttab":
+                    if self.displayed_project is not None:
+                        self.load_project_into_layout(self.displayed_project)
 
             # Reset temp values
             if self.values["tabs"] != "projecttab":
