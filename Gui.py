@@ -14,6 +14,52 @@ theme = {"BACKGROUND": "#34384b", "TEXT": "#fafafa", "INPUT": "#ffffff", "TEXT_I
          "COLOR_LIST": ["#ffffff", "#ffffff", "#ffffff", "#ffffff"], "DESCRIPTION": ["Grey", "Brown"]}
 
 
+class ProjectEditFrame(sg.Frame):
+
+    def __init__(self):
+        self.manage_project_preface = "manageproject"
+
+        self.project_edit_layout = [[sg.Text("Project Name:", background_color="#ececec", text_color="#34384b"),
+                                     sg.Input(size=15, expand_x=True, key=self.manage_project_preface + "projectname",
+                                              expand_y=False)],
+                                    [sg.Button("Owners", expand_x=False, size=10,
+                                               key=self.manage_project_preface + "owners",
+                                               expand_y=False), sg.Text("", background_color="#ececec",
+                                                                        key=self.manage_project_preface + "ownerstext")],
+                                    [sg.Button("Groups", expand_x=False, size=10,
+                                               key=self.manage_project_preface + "groups",
+                                               expand_y=False), sg.Text("", background_color="#ececec",
+                                                                        key=self.manage_project_preface + "groupstext")],
+                                    [sg.Button("People", expand_x=False, size=10,
+                                               key=self.manage_project_preface + "people",
+                                               expand_y=False), sg.Text("", background_color="#ececec",
+                                                                        key=self.manage_project_preface + "peopletext")],
+                                    [sg.Button("Due Date", expand_x=False, size=10,
+                                               key=self.manage_project_preface + "date",
+                                               expand_y=False),
+                                     sg.Text("", key=self.manage_project_preface + "duedatetext",
+                                             background_color="#ececec"),
+                                     sg.Push(background_color="#ececec"),
+                                     sg.Text("Interval:", background_color="#ececec", text_color="#34384b"),
+                                     sg.Input(size=2, key=self.manage_project_preface + "interval", enable_events=True,
+                                              expand_y=False,
+                                              expand_x=True)],
+
+                                    [sg.Button("Apply Edits", key=self.manage_project_preface + "create",
+                                               expand_x=True,
+                                               expand_y=False),
+                                     sg.Button("Remove Project", key=self.manage_project_preface + "remove",
+                                               expand_x=False,
+                                               expand_y=False, size=16, button_color="#d03a39")],
+                                    [sg.Text("", key=self.manage_project_preface + "error", visible=False,
+                                             expand_y=False,
+                                             background_color="#ececec")]]
+
+        super().__init__(layout=self.project_edit_layout, title="", size=(400, 300), pad=(0, 0),
+                         background_color="#ececec",
+                         border_width=0, expand_y=True, expand_x=False)
+
+
 class PopUp(sg.Window):
 
     def __init__(self, text: str):
@@ -251,6 +297,11 @@ class DesktopGui:
         self.reports_row = 1
         self.displayed_project = None
 
+        # Temporary project edit values
+        self.temp_owners = set()
+        self.temp_people = set()
+        self.temp_groups = set()
+        self.temp_duedate = set()
         self.userfile = "users.json"
         # if getattr(sys, 'frozen', False):
         #     self.userfile = os.path.join(sys._MEIPASS, self.userfile)
@@ -284,32 +335,6 @@ class DesktopGui:
         self.run_login()
 
         self.manage_project_preface = "manageproject"
-        self.project_edit_layout = [[sg.Text("Project Name:", background_color="#ececec", text_color="#34384b"),
-                                     sg.Input(size=15, expand_x=True, key=self.manage_project_preface + "projectname",
-                                              expand_y=False)],
-                                    [sg.Button("Owners", expand_x=True, key=self.manage_project_preface + "owners",
-                                               expand_y=False),
-                                     sg.Button("Groups", expand_x=True, key=self.manage_project_preface + "groups",
-                                               expand_y=False)],
-                                    [sg.Button("People", expand_x=True, key=self.manage_project_preface + "people",
-                                               expand_y=False)],
-                                    [sg.Button("Due Date", expand_x=True, key=self.manage_project_preface + "date",
-                                               expand_y=False),
-                                     sg.Push(background_color="#ececec"),
-                                     sg.Text("Interval:", background_color="#ececec", text_color="#34384b"),
-                                     sg.Input(size=5, key=self.manage_project_preface + "interval", enable_events=True,
-                                              expand_y=False,
-                                              expand_x=True)],
-
-                                    [sg.Button("Apply Edits", key=self.manage_project_preface + "create",
-                                               expand_x=True,
-                                               expand_y=False),
-                                     sg.Button("Remove Project", key=self.manage_project_preface + "remove",
-                                               expand_x=False,
-                                               expand_y=False, size=16, button_color="#d03a39")],
-                                    [sg.Text("", key=self.manage_project_preface + "error", visible=False,
-                                             expand_y=False,
-                                             background_color="#ececec")]]
 
         # Project Tab
         self.project_tab_layout = [
@@ -323,9 +348,7 @@ class DesktopGui:
                         background_color="#00a758", text_color="#ffffff",
                         highlight_background_color="#c6c6c6", highlight_text_color="#ffffff", pad=(0, 0),
                         font=("Segoe UI", 13, ""), expand_y=True),
-             sg.Frame(layout=self.project_edit_layout, title="", size=(400, 300), pad=(0, 0),
-                      background_color="#ececec",
-                      border_width=0, expand_y=True, expand_x=False)]]
+             ProjectEditFrame()]]
 
         # Reports Tab
         self.reports_tab_layout = [
@@ -357,30 +380,32 @@ class DesktopGui:
              ]]
 
         # Tab Layout
-        self.tabs_layout = [[sg.Text(self.name, font=("Segoe UI", 20, "bold")), sg.Push(),
-                             sg.Button("Logout", expand_y=False, size=(7, 1),
-                                       font=("Segoe UI", 12, "bold")),
-                             sg.Button('Exit', expand_y=False, size=(7, 1),
-                                       font=("Segoe UI", 12, "bold"))
-                             ],
-                            [sg.TabGroup([[sg.Tab("Dashboard", self.dashboard_tab_layout, background_color="#ececec",
-                                                  border_width=0, key="dashboardtab"),
-                                           sg.Tab("Reports", self.reports_tab_layout, border_width=0,
-                                                  background_color="#ececec", key="reporttab"),
-                                           sg.Tab("Projects", self.project_tab_layout, border_width=0,
-                                                  background_color="#ececec", key="projecttab")]], enable_events=True,
-                                         key="tabs",
-                                         border_width=0,
-                                         focus_color="clear", background_color="#ececec",
-                                         tab_background_color="#ececec", selected_background_color="#c6c6c6",
-                                         selected_title_color="black", tab_border_width=0,
-                                         pad=(0, 0), expand_y=True, expand_x=True)]]
+        self.tabs_layout = [
+            [sg.Text(self.name, font=("Segoe UI", 20, "bold")),
+             sg.Push(),
+             sg.Button("Logout", expand_y=False, size=(7, 1),
+                       font=("Segoe UI", 12, "bold")),
+             sg.Button('Exit', expand_y=False, size=(7, 1),
+                       font=("Segoe UI", 12, "bold"))
+             ],
+            [sg.TabGroup([[sg.Tab("Dashboard", self.dashboard_tab_layout, background_color="#ececec",
+                                  border_width=0, key="dashboardtab"),
+                           sg.Tab("Reports", self.reports_tab_layout, border_width=0,
+                                  background_color="#ececec", key="reporttab"),
+                           sg.Tab("Projects", self.project_tab_layout, border_width=0,
+                                  background_color="#ececec", key="projecttab")]], enable_events=True,
+                         key="tabs",
+                         border_width=0,
+                         focus_color="clear", background_color="#ececec",
+                         tab_background_color="#ececec", selected_background_color="#c6c6c6",
+                         selected_title_color="black", tab_border_width=0,
+                         pad=(0, 0), expand_y=True, expand_x=True)]]
 
         # Main Page
         # self.window = sg.Window('Seen', self.tabs_layout, background_color="grey20", titlebar_text_color="black")
         self.window = sg.Window('Seen', self.tabs_layout, font=("Segoe UI", 15, ""), no_titlebar=False,
                                 margins=(0, 0), icon=self.icon, resizable=True, finalize=True)
-        self.window.set_min_size((627, 400))
+        self.window.set_min_size((627, 420))
         self.run()
 
     def run_login(self):
@@ -424,20 +449,31 @@ class DesktopGui:
                 self.load_project_into_layout(self.displayed_project)
 
             if self.event == "projectstablist":
+                if self.displayed_project and self.values['projectstablist'][0] != self.displayed_project.project_name:
+                    self.reset_temp_values()
+
                 self.displayed_project = self.db.projects[self.values['projectstablist'][0]]
+
+                self.set_temp_values()
                 self.update_manage_projects()
 
             if self.event == 'Logout':
                 self.window.close()
                 self.logout()
 
-            if self.values["tabs"] == "projecttab":
-                if self.displayed_project is not None:
-                    self.update_manage_projects()
+            if self.event == "tabs":
+                if self.values["tabs"] == "projecttab":
+                    if self.displayed_project is not None:
+                        self.set_temp_values()
+                        self.update_manage_projects()
 
             if self.values["tabs"] == "reporttab":
                 if self.displayed_project is not None:
                     self.load_project_into_layout(self.displayed_project)
+
+            # Reset temp values
+            if self.values["tabs"] != "projecttab":
+                self.reset_temp_values()
 
             if self.event == self.manage_project_preface + "remove":
                 if self.displayed_project is not None:
@@ -448,6 +484,27 @@ class DesktopGui:
                         self.window[self.manage_project_preface + "error"].update(visible=True,
                                                                                   value="User is not owner",
                                                                                   text_color="red")
+
+            elif self.event == self.manage_project_preface + "owners":
+                self.temp_owners = set(ComboPopUp("Owners", list(self.db.users), list(self.temp_owners)).get())
+                if self.temp_owners:
+                    self.window[self.manage_project_preface + "ownerstext"].update(
+                        self.temp_owners.__str__().replace("{", "").replace("}", "").replace("'", ""),
+                        text_color="#34384b")
+
+            elif self.event == self.manage_project_preface + "people":
+                self.temp_people = set(ComboPopUp("People", list(self.db.users), list(self.temp_people)).get())
+                if self.temp_people:
+                    self.window[self.manage_project_preface + "peopletext"].update(
+                        self.temp_people.__str__().replace("{", "").replace("}", "").replace("'", ""),
+                        text_color="#34384b")
+
+            elif self.event == self.manage_project_preface + "groups":
+                self.temp_groups = set(ComboPopUp("Groups", list(self.db.groups), list(self.temp_groups)).get())
+                if self.temp_groups:
+                    self.window[self.manage_project_preface + "groupstext"].update(
+                        self.temp_groups.__str__().replace("{", "").replace("}", "").replace("'", ""),
+                        text_color="#34384b")
             if self.event == "loadlatest":
                 self.load_latest_reports()
                 self.displayed_project.get_sorted_reports()
@@ -475,6 +532,7 @@ class DesktopGui:
                 value = \
                     self.displayed_project.report_history[self.displayed_project.reports_to[int(element_num)]][index][2]
                 self.window["report" + str(element_num)].update(value=value)
+
         self.window.close()
 
     def update_project_lists(self):
@@ -582,6 +640,23 @@ class DesktopGui:
             self.window[self.manage_project_preface + "interval"].update(value=self.displayed_project.interval,
                                                                          disabled=disabled,
                                                                          background_color=button_color)
+
+            self.window[self.manage_project_preface + "ownerstext"].update(
+                self.temp_owners.__str__().replace("{", "").replace("}", "").replace("'", ""),
+                text_color="#34384b")
+
+            self.window[self.manage_project_preface + "groupstext"].update(
+                self.temp_groups.__str__().replace("[", "").replace("]", "").replace("'", ""),
+                text_color="#34384b")
+
+            self.window[self.manage_project_preface + "peopletext"].update(
+                self.temp_people.__str__().replace("{", "").replace("}", "").replace("'", ""),
+                text_color="#34384b")
+
+            self.window[self.manage_project_preface + "duedatetext"].update(
+                self.temp_duedate.__str__().replace("{", "").replace("}", "").replace("'", ""),
+                text_color="#34384b")
+
             self.window[self.manage_project_preface + "error"].update(visible=False)
 
     def submit_report(self):
@@ -670,6 +745,19 @@ class DesktopGui:
         self.displayed_project = None
         self.db.remove_project(project)
         self.update_project_lists()
+
+    def reset_temp_values(self):
+        self.temp_groups = set()
+        self.temp_people = set()
+        self.temp_owners = set()
+        self.temp_duedate = ""
+
+    def set_temp_values(self):
+        self.temp_people = self.displayed_project.people
+        self.temp_owners = self.displayed_project.owner
+        self.temp_groups = self.displayed_project.reports_to
+        duedate = datetime.strptime(self.displayed_project.due_date[0], "%B-%d-%Y").strftime("%m/%d/%y")
+        self.temp_duedate = duedate
 
 
 DesktopGui()
