@@ -14,6 +14,38 @@ theme = {"BACKGROUND": "#34384b", "TEXT": "#fafafa", "INPUT": "#ffffff", "TEXT_I
          "COLOR_LIST": ["#ffffff", "#ffffff", "#ffffff", "#ffffff"], "DESCRIPTION": ["Grey", "Brown"]}
 
 
+class GroupsPage(sg.Tab):
+
+    def __init__(self, db: Database):
+        self.groups = db.groups
+
+        report_viewer_frame = sg.Frame("Submitted Reports",
+                                       [[sg.Combo(list(db.projects), expand_x=True, key="submittedproject",
+                                                  enable_events=True)],
+                                        [sg.Multiline(size=33, expand_x=True, expand_y=True, key="submittedtext")],
+                                        [sg.Combo(values=[], expand_x=True, key="submittedreports",
+                                                  enable_events=True)]],
+                                       background_color="#ececec",
+                                       border_width=0, expand_y=True, expand_x=False, font=("Segoe UI", 15, ""),
+                                       title_color="#34384b", element_justification="left")
+
+        self.layout = [[sg.Text("Manage Groups", font=("Segoe UI", 18, "bold"), text_color="#34384b",
+                                background_color="#ececec"), sg.Push(background_color="#ececec"),
+                        sg.Button("New Group", key="creategroup", font=("Segoe UI", 13, "bold"), size=(10, 1),
+                                  pad=((0, 5), 3),
+                                  border_width=1)],
+                       [sg.Listbox(values=list(self.groups), size=(25, 8), key="grouplist",
+                                   enable_events=True, select_mode=sg, no_scrollbar=True,
+                                   background_color="#00a758", text_color="#ffffff",
+                                   highlight_background_color="#c6c6c6", highlight_text_color="#ffffff", pad=(0, 0),
+                                   font=("Segoe UI", 13, ""), expand_y=True), report_viewer_frame
+
+                        ]]
+
+        super().__init__("Groups", self.layout, background_color="#ececec",
+                         border_width=0, key="groupstab", element_justification="left")
+
+
 class DueDateEditor(sg.Window):
 
     def __init__(self, project: Project, icon=None):
@@ -428,7 +460,7 @@ class CreateProjectPopup(sg.Window):
 
 
 def valid_interval_text(text):
-    if len(text) == 1 and text in '+-':
+    if len(text) == 1 and text in '+':
         return True
     else:
         try:
@@ -543,7 +575,8 @@ class DesktopGui:
                            sg.Tab("Reports", self.reports_tab_layout, border_width=0,
                                   background_color="#ececec", key="reporttab"),
                            sg.Tab("Projects", self.project_tab_layout, border_width=0,
-                                  background_color="#ececec", key="projecttab")]], enable_events=True,
+                                  background_color="#ececec", key="projecttab"), GroupsPage(self.db)]],
+                         enable_events=True,
                          key="tabs",
                          border_width=0,
                          focus_color="clear", background_color="#ececec",
@@ -635,30 +668,33 @@ class DesktopGui:
                                                                                   text_color="red")
 
             elif self.event == self.manage_project_preface + "owners":
-                self.temp_owners = set(ComboPopUp("Owners", list(self.db.users), list(self.temp_owners)).get())
-                if self.temp_owners:
-                    self.window[self.manage_project_preface + "ownerstext"].update(
-                        self.temp_owners.__str__().replace("{", "").replace("}", "").replace("'", ""),
-                        text_color="#34384b")
+                if self.displayed_project:
+                    self.temp_owners = set(ComboPopUp("Owners", list(self.db.users), list(self.temp_owners)).get())
+                    if self.temp_owners:
+                        self.window[self.manage_project_preface + "ownerstext"].update(
+                            self.temp_owners.__str__().replace("{", "").replace("}", "").replace("'", ""),
+                            text_color="#34384b")
 
             elif self.event == self.manage_project_preface + "people":
-                self.temp_people = set(ComboPopUp("People", list(set(self.db.users) - self.displayed_project.owner),
-                                                  list(set(self.temp_people) - self.displayed_project.owner)).get())
-                if self.temp_people:
-                    self.window[self.manage_project_preface + "peopletext"].update(
-                        self.temp_people.__str__().replace("{", "").replace("}", "").replace("'", ""),
-                        text_color="#34384b")
+                if self.displayed_project:
+                    self.temp_people = set(ComboPopUp("People", list(set(self.db.users) - self.displayed_project.owner),
+                                                      list(set(self.temp_people) - self.displayed_project.owner)).get())
+                    if self.temp_people:
+                        self.window[self.manage_project_preface + "peopletext"].update(
+                            self.temp_people.__str__().replace("{", "").replace("}", "").replace("'", ""),
+                            text_color="#34384b")
 
             elif self.event == self.manage_project_preface + "groups":
-                self.temp_groups = set(ComboPopUp("Groups", list(self.db.groups), list(self.temp_groups)).get())
-                if self.temp_groups:
-                    self.window[self.manage_project_preface + "groupstext"].update(
-                        self.temp_groups.__str__().replace("{", "").replace("}", "").replace("'", ""),
-                        text_color="#34384b")
+                if self.displayed_project:
+                    self.temp_groups = set(ComboPopUp("Groups", list(self.db.groups), list(self.temp_groups)).get())
+                    if self.temp_groups:
+                        self.window[self.manage_project_preface + "groupstext"].update(
+                            self.temp_groups.__str__().replace("{", "").replace("}", "").replace("'", ""),
+                            text_color="#34384b")
 
             elif self.event == self.manage_project_preface + 'interval':
                 text = self.values[self.manage_project_preface + 'interval']
-                if not valid_interval_text(text):
+                if not valid_interval_text(text) or not self.displayed_project:
                     self.window[self.manage_project_preface + 'interval'].update(value=text[:-1])
 
             elif self.event == self.manage_project_preface + "date":
@@ -670,6 +706,17 @@ class DesktopGui:
             elif self.event == self.manage_project_preface + "create":
                 if self.displayed_project:
                     self.apply_project_edits()
+
+            if self.event == "submittedproject":
+                if self.window["grouplist"].get():
+                    group = self.window["grouplist"].get()[0]
+
+                    project = self.window["submittedproject"].get()
+                    reports = self.db.projects[project].get_sorted_reports()
+                    if group in reports:
+                        reports = [r[0] for r in reports[group]]
+
+                        self.window["submittedreports"].update(values=reports)
 
             if self.event == "loadlatest":
                 self.load_latest_reports()
@@ -965,6 +1012,16 @@ class DesktopGui:
         if updated_vals["Name"] == "" or updated_vals["Name"] in new:
             self.window[self.manage_project_preface + "error"].update(value="Project Name already exists", visible=True)
             return
+        elif not updated_vals["Owners"]:
+            self.window[self.manage_project_preface + "error"].update(value="Provide at least one owner", visible=True)
+            return
+        elif not updated_vals["Groups"]:
+            self.window[self.manage_project_preface + "error"].update(value="Provide at least one group", visible=True)
+            return
+        elif updated_vals["Interval"] == "0":
+            self.window[self.manage_project_preface + "error"].update(value="Interval cannot be 0", visible=True)
+            return
+
         if YesNoPopup("Apply changes to:\n" + self.displayed_project.project_name).get():
             self.db.update_project(self.displayed_project, updated_vals)
             self.update_project_lists()
