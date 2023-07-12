@@ -28,10 +28,12 @@ cred = credentials.Certificate(firebase_address)
 firebase_admin.initialize_app(cred, {'databaseURL': "https://seenworkflow-default-rtdb.firebaseio.com/"})
 root = db.reference('root')
 users = db.reference('root/users')
+projects = db.reference('root/projects')
 
 # u = User("Parag Mehta", "parag", un_hashed_password="123", projects=["Seen Workflow", "Muni SMA"]).save_user()
-p = Project("Seen WorkFlow", ["Andrew", "Parag"], ["Parag", "GWAM"], due_date=[])
+p = Project("Test", ["Andrew", "Parag"], ["Parag", "GWAM"])
 
-p.add_new_due_date(datetime.datetime.strptime("July-11-2023", "%B-%d-%Y").date())
-
-print(p.due_date.__str__())
+# p_child = db.reference('root/projects/').child(p.project_name).get()
+#
+# projects.update({"new name": p_child})
+# db.reference('root/projects/' + p.project_name).delete()

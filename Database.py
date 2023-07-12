@@ -131,6 +131,34 @@ class Database:
         # Step 3 remove project from database
         self.projects.pop(project.project_name)
 
+    def update_project(self, project: Project, project_dict: {}):
+        # Clear all people from old project name
+        if project.project_name != project_dict["Name"]:
+            old_people = project.people
+            for people in old_people:
+                self.users[people].remove_from_project(project.project_name)
+
+            for people in project_dict["People"]:
+                self.users[people].add_to_projects(project_dict["Name"])
+
+        # Update All project values
+        project.reports_to = project_dict["Groups"]
+        project.people = project_dict["People"]
+        project.interval = project_dict["Interval"]
+        project.change_owner(project_dict["Owners"])
+
+        project.save_project()
+        if project.project_name != project_dict["Name"]:
+            p_child = db.reference('root/projects/').child(project.project_name).get()
+
+            self.projects_path.update({project_dict["Name"]: p_child})
+
+            db.reference('root/projects/' + project.project_name).delete()
+            self.projects.pop(project.project_name)
+
+            project.project_name = project_dict["Name"]
+            self.load_all_projects()
+
 
 if __name__ == '__main__':
     db = Database()

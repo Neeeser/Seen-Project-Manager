@@ -199,7 +199,7 @@ class ProjectEditFrame(sg.Frame):
                                                expand_y=False, size=16, button_color="#d03a39")],
                                     [sg.Text("", key=self.manage_project_preface + "error", visible=False,
                                              expand_y=False,
-                                             background_color="#ececec")]]
+                                             background_color="#ececec", text_color="Red")]]
 
         super().__init__(layout=self.project_edit_layout, title="", size=(400, 300), pad=(0, 0),
                          background_color="#ececec",
@@ -361,7 +361,8 @@ class CreateProjectPopup(sg.Window):
                         sg.Push(background_color="#ececec"),
                         sg.Text("Interval:", background_color="#ececec", text_color="#34384b"),
                         sg.Input(size=5, key="interval", enable_events=True, expand_y=True, expand_x=True)],
-                       [sg.Text("", key="error", visible=False, expand_y=True, background_color="#ececec")],
+                       [sg.Text("", key="error", visible=False, expand_y=True, background_color="#ececec",
+                                text_color="Red")],
                        [sg.Button("Create Project", key="create", expand_x=True, expand_y=True)]]
         super().__init__("Create Project", self.layout, disable_close=False, return_keyboard_events=True,
                          resizable=False, keep_on_top=True, font=("Segoe UI", 15, ""), background_color="#ececec")
@@ -395,7 +396,7 @@ class CreateProjectPopup(sg.Window):
                                                       "%m/%d/%Y").strftime("%B-%d-%Y")
             elif self.event == 'interval':
                 text = self.values['interval']
-                if not self.valid(text):
+                if not valid_interval_text(text):
                     self['interval'].update(value=text[:-1])
                 else:
                     self.interval = text
@@ -417,22 +418,24 @@ class CreateProjectPopup(sg.Window):
                         "Are you sure you want to create project: " + self.values["projectname"] + "?",
                         keep_on_top=True)
                     if v == "OK":
-                        p = Project(self.values["projectname"], self.owners, self.groups, due_date=self.due_date,
+                        p = Project(self.values["projectname"].strip(), self.owners, self.groups,
+                                    due_date=self.due_date,
                                     people=self.people, interval=self.interval)
                         self.close()
                         return p
         self.close()
         return None
 
-    def valid(self, text):
-        if len(text) == 1 and text in '+-':
+
+def valid_interval_text(text):
+    if len(text) == 1 and text in '+-':
+        return True
+    else:
+        try:
+            number = float(text)
             return True
-        else:
-            try:
-                number = float(text)
-                return True
-            except:
-                return False
+        except:
+            return False
 
 
 class DesktopGui:
@@ -639,7 +642,8 @@ class DesktopGui:
                         text_color="#34384b")
 
             elif self.event == self.manage_project_preface + "people":
-                self.temp_people = set(ComboPopUp("People", list(self.db.users), list(self.temp_people)).get())
+                self.temp_people = set(ComboPopUp("People", list(set(self.db.users) - self.displayed_project.owner),
+                                                  list(set(self.temp_people) - self.displayed_project.owner)).get())
                 if self.temp_people:
                     self.window[self.manage_project_preface + "peopletext"].update(
                         self.temp_people.__str__().replace("{", "").replace("}", "").replace("'", ""),
@@ -652,11 +656,20 @@ class DesktopGui:
                         self.temp_groups.__str__().replace("{", "").replace("}", "").replace("'", ""),
                         text_color="#34384b")
 
+            elif self.event == self.manage_project_preface + 'interval':
+                text = self.values[self.manage_project_preface + 'interval']
+                if not valid_interval_text(text):
+                    self.window[self.manage_project_preface + 'interval'].update(value=text[:-1])
+
             elif self.event == self.manage_project_preface + "date":
                 if self.displayed_project:
                     DueDateEditor(self.displayed_project).run()
                     self.set_temp_values()
                     self.update_manage_projects()
+
+            elif self.event == self.manage_project_preface + "create":
+                if self.displayed_project:
+                    self.apply_project_edits()
 
             if self.event == "loadlatest":
                 self.load_latest_reports()
@@ -933,6 +946,28 @@ class DesktopGui:
         self.temp_groups = self.displayed_project.reports_to
         duedate = datetime.strptime(self.displayed_project.due_date[0], "%B-%d-%Y").strftime("%m/%d/%y")
         self.temp_duedate_text = duedate
+
+    def get_updated_project_values(self):
+        new_project_name = self.window[self.manage_project_preface + "projectname"].get().strip()
+        new_owners = self.temp_owners
+        new_groups = self.temp_groups
+        new_people = self.temp_people
+        new_interval = self.window[self.manage_project_preface + "interval"].get()
+        new_project_dict = {"Name": new_project_name, "Owners": new_owners, "Groups": new_groups, "People": new_people,
+                            "Interval": new_interval}
+        return new_project_dict
+
+    def apply_project_edits(self):
+        updated_vals = self.get_updated_project_values()
+
+        new = set(set(self.db.projects))
+        new.remove(self.displayed_project.project_name)
+        if updated_vals["Name"] == "" or updated_vals["Name"] in new:
+            self.window[self.manage_project_preface + "error"].update(value="Project Name already exists", visible=True)
+            return
+        if YesNoPopup("Apply changes to:\n" + self.displayed_project.project_name).get():
+            self.db.update_project(self.displayed_project, updated_vals)
+            self.update_project_lists()
 
 
 DesktopGui()

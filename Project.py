@@ -47,7 +47,7 @@ class Project:
 
     def asdict(self):
         return {"owner": list(self.owner), "people": list(self.people), "due_date": self.due_date,
-                "date_created": self.date_created, "reports_to": self.reports_to, "interval": self.interval}
+                "date_created": self.date_created, "reports_to": list(self.reports_to), "interval": self.interval}
 
     def save_project(self):
         project_path = db.reference(self.firebase_path)
@@ -89,8 +89,9 @@ class Project:
             return True
         return False
 
-    def change_owner(self, user: str):
-        self.owner = user
+    def change_owner(self, user: []):
+        self.owner = set(user)
+        self.people.update(self.owner)
 
     def load_last_report(self, user: User) -> {}:
         reports_path = db.reference(self.firebase_path + "/reports").get()

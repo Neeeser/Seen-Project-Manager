@@ -1,0 +1,2 @@
+
+pyinstaller --onefile  --add-data="seenworkflow_private_key.json;\" --add-date="manulife.ico;\" --windowed --icon="manulife.ico" --name=Seen Gui.py
