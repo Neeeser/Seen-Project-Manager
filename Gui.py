@@ -5,6 +5,7 @@ import json
 from User import User
 from datetime import datetime
 import sys, os
+from sys import platform
 
 theme = {"BACKGROUND": "#34384b", "TEXT": "#fafafa", "INPUT": "#ffffff", "TEXT_INPUT": "#000000",
          "SCROLL": "#e9dcbe",
@@ -517,8 +518,14 @@ class DesktopGui:
         #     self.userfile = os.path.join(sys._MEIPASS, self.userfile)
 
         self.icon = "manulife.ico"
+
+
+        if platform == "darwin":
+            self.icon = "manulife.icns"
         if getattr(sys, 'frozen', False):
             self.icon = os.path.join(sys._MEIPASS, self.icon)
+        sg.set_options(icon=self.icon)
+
 
         # sg.theme('DarkGrey4')  # Add a touch of color
         sg.theme_add_new("Seen Theme", theme)
