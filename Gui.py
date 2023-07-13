@@ -519,13 +519,11 @@ class DesktopGui:
 
         self.icon = "manulife.ico"
 
-
         if platform == "darwin":
             self.icon = "manulife.icns"
         if getattr(sys, 'frozen', False):
             self.icon = os.path.join(sys._MEIPASS, self.icon)
         sg.set_options(icon=self.icon)
-
 
         # sg.theme('DarkGrey4')  # Add a touch of color
         sg.theme_add_new("Seen Theme", theme)
@@ -542,12 +540,17 @@ class DesktopGui:
 
         # User Login Window
         self.login_popup_layout = [
-            [sg.Text("Username:", size=10), sg.Input(default_text="", do_not_clear=True, key="username", size=15)],
-            [sg.Text("Password:", size=10), sg.Input(default_text="", key="password", size=15, password_char='*')],
-            [sg.Button("Login"), sg.Button("Cancel"), sg.Checkbox("Stay Logged In?", default=True, key="staylogin")]]
+            [sg.Text("Username:", size=8, background_color="#ececec", text_color="#34384b"),
+             sg.Input(default_text="", do_not_clear=True, key="username", size=15, expand_x=True)],
+            [sg.Text("Password:", size=8, background_color="#ececec", text_color="#34384b"),
+             sg.Input(default_text="", key="password", size=15, password_char='*', expand_x=True)],
+            [sg.Button("Login", size=6), sg.Button("Cancel", size=6),
+             sg.Checkbox("Stay Logged In?", default=True, key="staylogin", background_color="#ececec",
+                         text_color="#34384b")]]
 
         self.choice = sg.Window('Login', self.login_popup_layout,
-                                disable_close=False, return_keyboard_events=True)
+                                disable_close=False, return_keyboard_events=True, font=("Segoe UI", 13, ""),
+                                background_color="#ececec")
 
         self.run_login()
 
