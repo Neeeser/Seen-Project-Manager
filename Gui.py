@@ -14,17 +14,45 @@ theme = {"BACKGROUND": "#34384b", "TEXT": "#fafafa", "INPUT": "#ffffff", "TEXT_I
          "COLOR_LIST": ["#ffffff", "#ffffff", "#ffffff", "#ffffff"], "DESCRIPTION": ["Grey", "Brown"]}
 
 
+class NewGroupPopUP(sg.Window):
+
+    def __init__(self):
+        self.button_pad = (2, 2)
+        self.layout = [[sg.Text("Group Name:", background_color="#ececec", text_color="#34384b"),
+                        sg.Input(size=10, pad=self.button_pad)],
+                       [sg.Button(button_text="Users", expand_x=True, pad=self.button_pad),
+                        sg.Button(button_text="Create", expand_x=True, pad=self.button_pad),
+                        sg.Button(button_text="Cancel", expand_x=True, pad=self.button_pad)]
+                       ]
+
+        super().__init__("New Group", self.layout, disable_close=False, return_keyboard_events=True,
+                         resizable=False, keep_on_top=True, font=("Segoe UI", 15, ""), background_color="#ececec")
+
+    def get(self):
+        while True:
+            self.event, self.com_values = self.read()
+            if self.event in (sg.WIN_CLOSED, 'Exit'):
+                break
+
+
 class GroupsPage(sg.Tab):
 
     def __init__(self, db: Database):
         self.groups = db.groups
 
-        report_viewer_frame = sg.Frame("Submitted Reports",
-                                       [[sg.Combo(list(db.projects), expand_x=True, key="submittedproject",
-                                                  enable_events=True)],
-                                        [sg.Multiline(size=33, expand_x=True, expand_y=True, key="submittedtext")],
-                                        [sg.Combo(values=[], expand_x=True, key="submittedreports",
-                                                  enable_events=True)]],
+        report_viewer_frame = sg.Frame("",
+                                       [[
+                                           sg.Text("Submitted Reports", font=("Segoe UI", 15, ""),
+                                                   background_color="#ececec", text_color="#34384b"),
+                                           sg.Push(background_color="#ececec"),
+                                           sg.Text("", key="submittedbytext", background_color="#ececec",
+                                                   text_color="#34384b")],
+                                           [sg.Combo(list(db.projects), expand_x=True, key="submittedproject",
+                                                     enable_events=True, visible=False)],
+                                           [sg.Multiline(size=33, expand_x=True, expand_y=True, key="submittedtext",
+                                                         visible=False)],
+                                           [sg.Combo(values=[], expand_x=True, key="submittedreports",
+                                                     enable_events=True, visible=False)]],
                                        background_color="#ececec",
                                        border_width=0, expand_y=True, expand_x=False, font=("Segoe UI", 15, ""),
                                        title_color="#34384b", element_justification="left")
@@ -477,7 +505,7 @@ class DesktopGui:
         self.max_reports = 6
         self.reports_row = 1
         self.displayed_project = None
-
+        self.displayed_group = None
         # Temporary project edit values
         self.temp_owners = set()
         self.temp_people = set()
@@ -707,16 +735,18 @@ class DesktopGui:
                 if self.displayed_project:
                     self.apply_project_edits()
 
-            if self.event == "submittedproject":
+            elif self.event == "grouplist":
+                self.update_group_page()
+
+            elif self.event == "submittedproject":
                 if self.window["grouplist"].get():
-                    group = self.window["grouplist"].get()[0]
+                    self.update_group_combos()
 
-                    project = self.window["submittedproject"].get()
-                    reports = self.db.projects[project].get_sorted_reports()
-                    if group in reports:
-                        reports = [r[0] for r in reports[group]]
+            elif self.event == "submittedreports":
+                self.update_group_report_text()
 
-                        self.window["submittedreports"].update(values=reports)
+            elif self.event == "creategroup":
+                NewGroupPopUP().get()
 
             if self.event == "loadlatest":
                 self.load_latest_reports()
@@ -1025,6 +1055,38 @@ class DesktopGui:
         if YesNoPopup("Apply changes to:\n" + self.displayed_project.project_name).get():
             self.db.update_project(self.displayed_project, updated_vals)
             self.update_project_lists()
+
+    def update_group_page(self):
+        self.displayed_group = self.window["grouplist"].get()[0]
+        if self.displayed_group:
+            self.window["submittedproject"].update(visible=True)
+            self.window["submittedreports"].update(visible=True)
+            self.window["submittedtext"].update(visible=True)
+            if self.window["submittedproject"].get():
+                self.update_group_combos()
+
+    def update_group_combos(self):
+        group = self.displayed_group
+
+        project = self.window["submittedproject"].get()
+        reports = self.db.projects[project].get_sorted_reports()
+        if group in reports:
+            reports = [r[0] for r in reports[group]]
+
+            self.window["submittedreports"].update(values=reports)
+        else:
+            self.window["submittedreports"].update(values=[])
+
+        self.window["submittedtext"].update(value="")
+        self.window["submittedbytext"].update(value="")
+
+    def update_group_report_text(self):
+        if self.window["submittedreports"].get():
+            project = self.window["submittedproject"].get()
+            report = self.db.projects[project].get_sorted_reports()
+            index = self.window["submittedreports"].widget.current()
+            self.window["submittedtext"].update(value=report[self.displayed_group][index][2])
+            self.window["submittedbytext"].update(value=report[self.displayed_group][index][1])
 
 
 DesktopGui()

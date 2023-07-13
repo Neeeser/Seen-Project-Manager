@@ -1,0 +1,4 @@
+PySimpleGUI~=4.60.5
+setuptools~=68.0.0
+PySimpleGUIWeb~=0.39.0
+pyinstaller~=5.13.0
