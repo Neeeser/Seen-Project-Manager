@@ -78,6 +78,11 @@ class Database:
         print(project.people)
         return True
 
+    def add_group(self, group: Group):
+        self.groups[group.name] = group
+        group.save_group()
+
+
     def validate_user(self, username, password):
         if username in self.users:
             user = self.users[username]

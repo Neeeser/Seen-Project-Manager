@@ -6,6 +6,7 @@ from User import User
 from datetime import datetime
 import sys, os
 from sys import platform
+from Group import Group
 
 theme = {"BACKGROUND": "#34384b", "TEXT": "#fafafa", "INPUT": "#ffffff", "TEXT_INPUT": "#000000",
          "SCROLL": "#e9dcbe",
@@ -17,13 +18,16 @@ theme = {"BACKGROUND": "#34384b", "TEXT": "#fafafa", "INPUT": "#ffffff", "TEXT_I
 
 class NewGroupPopUP(sg.Window):
 
-    def __init__(self):
+    def __init__(self, db: Database):
+        self.db = db
         self.button_pad = (2, 2)
         self.layout = [[sg.Text("Group Name:", background_color="#ececec", text_color="#34384b"),
-                        sg.Input(size=10, pad=self.button_pad)],
-                       [sg.Button(button_text="Users", expand_x=True, pad=self.button_pad),
+                        sg.Input(size=10, pad=self.button_pad, key="groupname")],
+                       [
+                       #sg.Button(button_text="Users", expand_x=True, pad=self.button_pad),
                         sg.Button(button_text="Create", expand_x=True, pad=self.button_pad),
-                        sg.Button(button_text="Cancel", expand_x=True, pad=self.button_pad)]
+                        sg.Button(button_text="Cancel", expand_x=True, pad=self.button_pad, button_color="#d03a39")],
+                       [sg.Text("", key="error", background_color="#ececec", text_color="#d03a39")]
                        ]
 
         super().__init__("New Group", self.layout, disable_close=False, return_keyboard_events=True,
@@ -35,7 +39,21 @@ class NewGroupPopUP(sg.Window):
             if self.event in (sg.WIN_CLOSED, 'Exit'):
                 break
 
+            if self.event == "Cancel":
+                break
 
+            if self.event == "Create":
+                group_text = self["groupname"].get().strip()
+                if group_text not in self.db.groups:
+                    group = Group(group_text, [""])
+                    self.db.add_group(group)
+
+                    self.close()
+                    return group
+                else:
+                    self["error"].update(value="Group name taken")
+        self.close()
+        return None
 class GroupsPage(sg.Tab):
 
     def __init__(self, db: Database):
@@ -756,7 +774,8 @@ class DesktopGui:
                 self.update_group_report_text()
 
             elif self.event == "creategroup":
-                NewGroupPopUP().get()
+                group = NewGroupPopUP(self.db).get()
+                self.update_group_list()
 
             if self.event == "loadlatest":
                 self.load_latest_reports()
@@ -1098,5 +1117,7 @@ class DesktopGui:
             self.window["submittedtext"].update(value=report[self.displayed_group][index][2])
             self.window["submittedbytext"].update(value=report[self.displayed_group][index][1])
 
+    def update_group_list(self):
+        self.window["grouplist"].update(list(self.db.groups))
 
 DesktopGui()
