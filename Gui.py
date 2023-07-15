@@ -24,9 +24,9 @@ class NewGroupPopUP(sg.Window):
         self.layout = [[sg.Text("Group Name:", background_color="#ececec", text_color="#34384b"),
                         sg.Input(size=10, pad=self.button_pad, key="groupname")],
                        [
-                       #sg.Button(button_text="Users", expand_x=True, pad=self.button_pad),
-                        sg.Button(button_text="Create", expand_x=True, pad=self.button_pad),
-                        sg.Button(button_text="Cancel", expand_x=True, pad=self.button_pad, button_color="#d03a39")],
+                           # sg.Button(button_text="Users", expand_x=True, pad=self.button_pad),
+                           sg.Button(button_text="Create", expand_x=True, pad=self.button_pad),
+                           sg.Button(button_text="Cancel", expand_x=True, pad=self.button_pad, button_color="#d03a39")],
                        [sg.Text("", key="error", background_color="#ececec", text_color="#d03a39")]
                        ]
 
@@ -54,6 +54,8 @@ class NewGroupPopUP(sg.Window):
                     self["error"].update(value="Group name taken")
         self.close()
         return None
+
+
 class GroupsPage(sg.Tab):
 
     def __init__(self, db: Database):
@@ -66,7 +68,7 @@ class GroupsPage(sg.Tab):
                                            sg.Push(background_color="#ececec"),
                                            sg.Text("", key="submittedbytext", background_color="#ececec",
                                                    text_color="#34384b")],
-                                           [sg.Combo(list(db.projects), expand_x=True, key="submittedproject",
+                                           [sg.Combo([], expand_x=True, key="submittedproject",
                                                      enable_events=True, visible=False)],
                                            [sg.Multiline(size=33, expand_x=True, expand_y=True, key="submittedtext",
                                                          visible=False)],
@@ -1088,7 +1090,9 @@ class DesktopGui:
     def update_group_page(self):
         self.displayed_group = self.window["grouplist"].get()[0]
         if self.displayed_group:
-            self.window["submittedproject"].update(visible=True)
+            self.window["submittedproject"].update(visible=True,
+                                                   values=self.db.get_projects_for_group(self.displayed_group))
+
             self.window["submittedreports"].update(visible=True)
             self.window["submittedtext"].update(visible=True)
             if self.window["submittedproject"].get():
@@ -1119,5 +1123,6 @@ class DesktopGui:
 
     def update_group_list(self):
         self.window["grouplist"].update(list(self.db.groups))
+
 
 DesktopGui()

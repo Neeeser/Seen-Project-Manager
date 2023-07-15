@@ -1,11 +1,14 @@
-from firebase_admin import db
-from firebase_admin import credentials
-import firebase_admin
-from User import User
-from Project import Project
 import hashlib
+import os
+import sys
+
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import db
+
 from Group import Group
-import os, sys
+from Project import Project
+from User import User
 
 
 class Database:
@@ -81,7 +84,6 @@ class Database:
     def add_group(self, group: Group):
         self.groups[group.name] = group
         group.save_group()
-
 
     def validate_user(self, username, password):
         if username in self.users:
@@ -163,6 +165,13 @@ class Database:
 
             project.project_name = project_dict["Name"]
             self.load_all_projects()
+
+    def get_projects_for_group(self, group: str):
+        projects_toreturn = []
+        for projects in self.projects:
+            if group in self.projects[projects].reports_to:
+                projects_toreturn.append(self.projects[projects].project_name)
+        return projects_toreturn
 
 
 if __name__ == '__main__':
