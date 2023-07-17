@@ -524,7 +524,7 @@ class DesktopGui:
     def __init__(self):
         # Fields
         self.max_reports = 6
-        self.reports_row = 1
+        self.reports_row = 2
         self.displayed_project = None
         self.displayed_group = None
         # Temporary project edit values
@@ -534,6 +534,7 @@ class DesktopGui:
         self.temp_duedate_text = ""
         self.temp_duedates = []
         self.userfile = "users.json"
+        self.export_file_types = ["CSV"]
         # if getattr(sys, 'frozen', False):
         #     self.userfile = os.path.join(sys._MEIPASS, self.userfile)
 
@@ -590,14 +591,20 @@ class DesktopGui:
                         font=("Segoe UI", 13, ""), expand_y=True),
              ProjectEditFrame()]]
 
+        reports_button_padding = (1, 1)
         # Reports Tab
         self.reports_tab_layout = [
-            [sg.Button('Save'), sg.Button("Submit"),
+            [sg.Button('Save', size=6, pad=reports_button_padding),
+             sg.Button("Submit", size=6, pad=reports_button_padding),
              sg.Combo(values=tuple(self.user.projects), default_value='None', readonly=False,
-                      k='-COMBO-', enable_events=True, size=30)
-                , sg.Text("Owner:", visible=False, key="owner", background_color="#ececec", text_color="#34384b"),
-             sg.Button('Load Latest', key="loadlatest", visible=False)
-             ]]
+                      k='-COMBO-', enable_events=True, size=30)]
+            , [
+                sg.Button('Latest', key="loadlatest", visible=False, size=6, pad=reports_button_padding),
+                sg.Button("Export", key="export", visible=False, size=6, pad=reports_button_padding),
+                sg.Text("Owner:", visible=False, key="owner", background_color="#ececec",
+                        text_color="#34384b")
+
+            ]]
         self.setup_reports()
 
         # Dashboard tab layout
@@ -778,6 +785,9 @@ class DesktopGui:
             elif self.event == "creategroup":
                 group = NewGroupPopUP(self.db).get()
                 self.update_group_list()
+
+            elif self.event == "export":
+                file = ComboPopUp("Export as?", self.export_file_types).get()
 
             if self.event == "loadlatest":
                 self.load_latest_reports()
@@ -988,11 +998,12 @@ class DesktopGui:
         owner = True if self.user.user_name in project.owner else False
         self.window["-COMBO-"].update(value=self.displayed_project.project_name)
 
+        self.window["loadlatest"].update(visible=True)
+        self.window["export"].update(visible=True)
+
         self.window["owner"].update(
             value="Owner: " + list(project.owner).__str__().replace("[", "").replace("]", "").replace("'", ""),
             visible=True)
-
-        self.window["loadlatest"].update(visible=True)
 
         for i in range(len(project.reports_to)):
             reports_history = project.get_sorted_reports()
