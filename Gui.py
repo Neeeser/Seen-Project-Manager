@@ -7,6 +7,7 @@ from datetime import datetime
 import sys, os
 from sys import platform
 from Group import Group
+import csv
 
 theme = {"BACKGROUND": "#34384b", "TEXT": "#fafafa", "INPUT": "#ffffff", "TEXT_INPUT": "#000000",
          "SCROLL": "#e9dcbe",
@@ -18,31 +19,17 @@ theme = {"BACKGROUND": "#34384b", "TEXT": "#fafafa", "INPUT": "#ffffff", "TEXT_I
 
 class ExportPopUp(sg.Window):
 
-    def __init__(self, name: str, options: [], default_values: [] = None, icon: str = None, fit_size=False,
-                 search_bar=True):
-        size = (20, 5)
-        expand_y = False
-        if fit_size:
-            size = (None, None)
-            expand_y = True
-
-        self.options = options
-        self.layout = [[sg.Input(size=(20, 1), enable_events=True, key='-INPUT-', expand_x=True, pad=(0, 0),
-                                 background_color="#ececec", text_color="#34384b", border_width=0)],
-                       [sg.Listbox(values=options, size=size, key="listboxpopup",
-                                   enable_events=True, select_mode=sg.SELECT_MODE_MULTIPLE,
-                                   default_values=default_values, no_scrollbar=True,
-                                   background_color="#00a758", text_color="#ffffff",
-                                   highlight_background_color="#c6c6c6", highlight_text_color="#ffffff", pad=(0, 0),
-                                   expand_x=True, expand_y=expand_y)],
-                       [sg.In(key="Accept", size=8),
-                        sg.SaveAs("Accept", pad=(3, 3), button_color=("#34384b", "#ececec"),
-                                  font=("Segoe UI", 15, "bold"), key="Accept",
-                                  enable_events=False),
+    def __init__(self, name: str, report_dict: {}, icon: str = None):
+        self.report_dict = report_dict
+        self.layout = [[sg.In(key="save_as", size=15, disabled=True, expand_x=True),
+                        sg.SaveAs("Browse", pad=(3, 3), button_color=("#34384b", "#ececec"),
+                                  font=("Segoe UI", 15, "bold"), key="save_as",
+                                  enable_events=False, default_extension=".csv",
+                                  file_types=(("Comma separated value", ".csv"), ("Adobe Format", ".pdf")))],
+                       [sg.Button("Accept", expand_x=True, pad=(3, 3), button_color=("#34384b", "#ececec"),
+                                  font=("Segoe UI", 15, "bold")),
                         sg.Button("Cancel", expand_x=True, pad=(3, 3), button_color=("#34384b", "#ececec"),
                                   font=("Segoe UI", 15, "bold"))]]
-        if not search_bar:
-            self.layout.pop(0)
 
         super().__init__(name, self.layout, disable_close=False, return_keyboard_events=True, keep_on_top=False,
                          font=("Segoe UI", 15, ""), margins=(0, 0), background_color="#ececec", icon=icon)
@@ -60,34 +47,21 @@ class ExportPopUp(sg.Window):
             if self.event == 'Cancel':
                 break
 
-            if self.event == 'Accept' or self.event == '\r':
+            if self.event == 'Accept':
+                if self["save_as"].get():
+                    file_extension = os.path.splitext(self["save_as"].get())[-1]
+                    if file_extension == ".csv":
+                        self.save_as_csv(self["save_as"].get())
 
-                projects = self.com_values["listboxpopup"]
-                if projects is None:
-                    projects = []
-
-                self.close()
-
-                return projects
-
-            if self.event == "listboxpopup":
-                self.selected = self.com_values["listboxpopup"]
-
-            elif self.event == "-INPUT-":
-                if self.com_values['-INPUT-'] != '':  # if a keystroke entered in search field
-                    search = self.com_values['-INPUT-'].lower()
-                    new_values = [x for x in self.options if search in x.lower()]  # do the filtering
-                    selected = [x for x in self.selected if x in new_values]
-                    self['listboxpopup'].update(new_values)  # display in the listbox
-                    self["listboxpopup"].set_value(selected)
-
-                else:
-                    # display original unfiltered list
-                    self['listboxpopup'].update(self.options)
-                    self["listboxpopup"].set_value(self.selected)
+                    self.close()
 
         self.close()
-        return []
+        return
+
+    def save_as_csv(self, path):
+        with open(path, 'w+', newline='') as csvfile:
+            csvwriter = csv.writer(csvfile)
+            csvwriter.writerows(self.report_dict)
 
 
 class NewGroupPopUP(sg.Window):
@@ -681,10 +655,11 @@ class DesktopGui:
             [sg.Button('Save', size=6, pad=reports_button_padding),
              sg.Button("Submit", size=6, pad=reports_button_padding),
              sg.Combo(values=tuple(self.user.projects), default_value='None', readonly=False,
-                      k='-COMBO-', enable_events=True, size=30)]
+                      k='-COMBO-', enable_events=True, size=30),
+             sg.Button('Latest', key="loadlatest", visible=False, size=6, pad=reports_button_padding),
+             sg.Button("Export", key="export", visible=False, size=6, pad=reports_button_padding), ]
             , [
-                sg.Button('Latest', key="loadlatest", visible=False, size=6, pad=reports_button_padding),
-                sg.Button("Export", key="export", visible=False, size=6, pad=reports_button_padding),
+
                 sg.Text("Owner:", visible=False, key="owner", background_color="#ececec",
                         text_color="#34384b")
 
@@ -871,7 +846,7 @@ class DesktopGui:
                 self.update_group_list()
 
             elif self.event == "export":
-                file = ExportPopUp("Export as?", self.export_file_types, fit_size=True, search_bar=False).get()
+                file = ExportPopUp("Export as?", self.get_reports_as_csv(), icon=self.icon).get()
 
             if self.event == "loadlatest":
                 self.load_latest_reports()
@@ -1219,10 +1194,18 @@ class DesktopGui:
     def update_group_list(self):
         self.window["grouplist"].update(list(self.db.groups))
 
-    def export_as_csv(self):
+    def get_reports_as_dict(self):
         report = {}
         for i in range(len(self.displayed_project.reports_to)):
             report[self.displayed_project.reports_to[i]] = self.values['report' + str(i)]
+        return report
+
+    def get_reports_as_csv(self):
+        report = [[], []]
+        report[0].extend(self.displayed_project.reports_to)
+        for i in range(len(self.displayed_project.reports_to)):
+            report[1].append(self.values['report' + str(i)])
+        return report
 
 
 DesktopGui()
