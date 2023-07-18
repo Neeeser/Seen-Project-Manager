@@ -81,6 +81,11 @@ class Database:
         print(project.people)
         return True
 
+    def check_user_name(self, username: str):
+        if username in self.users:
+            return False
+        return True
+
     def add_group(self, group: Group):
         self.groups[group.name] = group
         group.save_group()
@@ -172,6 +177,11 @@ class Database:
             if group in self.projects[projects].reports_to:
                 projects_toreturn.append(self.projects[projects].project_name)
         return projects_toreturn
+
+    def create_user(self, name, username, password):
+        u = User(name, username, un_hashed_password=password)
+        u.save_user()
+        self.users[username] = u
 
 
 if __name__ == '__main__':

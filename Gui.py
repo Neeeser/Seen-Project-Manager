@@ -9,12 +9,94 @@ from sys import platform
 from Group import Group
 import csv
 
-theme = {"BACKGROUND": "#34384b", "TEXT": "#fafafa", "INPUT": "#ffffff", "TEXT_INPUT": "#000000",
+theme = {"BACKGROUND": "#ececec", "TEXT": "#fafafa", "INPUT": "#ffffff", "TEXT_INPUT": "#000000",
          "SCROLL": "#e9dcbe",
          "BUTTON": ("#ffffff", "#00a758"), "PROGRESS": ('#000000', '#000000'), "BORDER": 1,
          "TAB": "00a758",
          "SLIDER_DEPTH": 0, "PROGRESS_DEPTH": 0,
          "COLOR_LIST": ["#ffffff", "#ffffff", "#ffffff", "#ffffff"], "DESCRIPTION": ["Grey", "Brown"]}
+
+
+class CreateNewUser(sg.Window):
+
+    def __init__(self, db: Database):
+        self.db = db
+        self.layout = [
+            [sg.Text("Full Name:", background_color="#ececec", text_color="#34384b", size=8),
+             sg.In(size=15, key="name", enable_events=True)],
+            [sg.Text("Username:", background_color="#ececec", text_color="#34384b", size=8),
+             sg.In(size=15, key="username")],
+            [sg.pin(elem=sg.Text(background_color="#ececec", text_color="Red", visible=False, key="error", pad=(0, 0)),
+                    shrink=True)],
+            [sg.Text("Password:", background_color="#ececec", text_color="#34384b", size=8),
+             sg.In(size=15, password_char='*', key="pass", enable_events=True)],
+            [sg.Text("Retype:", background_color="#ececec", text_color="#34384b", size=8),
+             sg.In(size=15, password_char='*', key="retype", enable_events=True)],
+            [sg.pin(
+                elem=sg.Text(background_color="#ececec", text_color="Red", visible=False, key="passerror", pad=(0, 0)),
+                shrink=True)],
+            [sg.Button("Create", expand_x=True),
+             sg.Button("Cancel", expand_x=True)],
+            [sg.pin(elem=sg.Text(background_color="#ececec", text_color="Red", visible=False, key="createerror",
+                                 pad=(0, 0)),
+                    shrink=True)]]
+
+        super().__init__("New User", self.layout, keep_on_top=True, font=("Segoe UI", 15, ""),
+                         background_color="#ececec", element_justification="left")
+
+    def get(self):
+        while True:
+            self.event, self.com_values = self.read()
+            if self.event in (sg.WIN_CLOSED, 'Exit'):
+                break
+
+            if self.event == "Cancel":
+                break
+
+            elif self.event == "name":
+                name = self["name"].get()
+                name = name.lower().replace(" ", "_")
+                self["username"].update(value=name)
+                if not self.db.check_user_name(name):
+                    self["error"].update(value="User name taken", visible=True)
+                else:
+                    self["error"].update(visible=False)
+
+            elif self.event == "pass":
+                self["retype"].update(value="")
+
+            elif self.event == "retype":
+                retype = self["retype"].get()
+                password = self["pass"].get()
+                if password != "":
+                    if retype == password or retype == "":
+                        self["passerror"].update(visible=False)
+                    else:
+                        self["passerror"].update(visible=True, value="Passwords do no match")
+
+            elif self.event == "Create":
+                name = self["name"].get()
+                if name == "":
+                    self["createerror"].update(value="Please Enter a Name", visible=True)
+                    continue
+                username = self["username"].get()
+                if username == "":
+                    self["createerror"].update(value="Please Enter a Username", visible=True)
+                    continue
+                password = self["pass"].get()
+                retype = self["retype"].get()
+                if password == "" or retype == "":
+                    self["createerror"].update(value="Please Enter a password", visible=True)
+                    continue
+                if password != retype:
+                    continue
+
+                self.db.create_user(name, username, password)
+                self.close()
+                return
+
+        self.close()
+        return None
 
 
 class ExportPopUp(sg.Window):
@@ -25,7 +107,7 @@ class ExportPopUp(sg.Window):
                         sg.SaveAs("Browse", pad=(3, 3), button_color=("#34384b", "#ececec"),
                                   font=("Segoe UI", 15, "bold"), key="save_as",
                                   enable_events=False, default_extension=".csv",
-                                  file_types=(("Comma separated value", ".csv"), ("Adobe Format", ".pdf")))],
+                                  file_types=(("Comma separated value", ".csv"), ("Plain Text", ".txt")))],
                        [sg.Button("Accept", expand_x=True, pad=(3, 3), button_color=("#34384b", "#ececec"),
                                   font=("Segoe UI", 15, "bold")),
                         sg.Button("Cancel", expand_x=True, pad=(3, 3), button_color=("#34384b", "#ececec"),
@@ -52,7 +134,8 @@ class ExportPopUp(sg.Window):
                     file_extension = os.path.splitext(self["save_as"].get())[-1]
                     if file_extension == ".csv":
                         self.save_as_csv(self["save_as"].get())
-
+                    elif file_extension == ".txt":
+                        self.save_as_txt(self["save_as"].get())
                     self.close()
 
         self.close()
@@ -62,6 +145,15 @@ class ExportPopUp(sg.Window):
         with open(path, 'w+', newline='') as csvfile:
             csvwriter = csv.writer(csvfile)
             csvwriter.writerows(self.report_dict)
+
+    def save_as_txt(self, path):
+        with open(path, 'w+', newline='') as txtfile:
+            for i in range(len(self.report_dict)):
+                txtfile.write(self.report_dict[0][i] + ":\n")
+                if i != len(self.report_dict) - 1:
+                    txtfile.write(self.report_dict[1][i] + "\n\n")
+                else:
+                    txtfile.write(self.report_dict[1][i])
 
 
 class NewGroupPopUP(sg.Window):
@@ -75,7 +167,9 @@ class NewGroupPopUP(sg.Window):
                            # sg.Button(button_text="Users", expand_x=True, pad=self.button_pad),
                            sg.Button(button_text="Create", expand_x=True, pad=self.button_pad),
                            sg.Button(button_text="Cancel", expand_x=True, pad=self.button_pad, button_color="#d03a39")],
-                       [sg.Text("", key="error", background_color="#ececec", text_color="#d03a39")]
+                       [sg.pin(
+                           sg.Text("", key="error", background_color="#ececec", text_color="#d03a39", visible=False),
+                           shrink=True)]
                        ]
 
         super().__init__("New Group", self.layout, disable_close=False, return_keyboard_events=True,
@@ -99,7 +193,7 @@ class NewGroupPopUP(sg.Window):
                     self.close()
                     return group
                 else:
-                    self["error"].update(value="Group name taken")
+                    self["error"].update(visible=True, value="Group name taken")
         self.close()
         return None
 
@@ -623,7 +717,7 @@ class DesktopGui:
              sg.Input(default_text="", do_not_clear=True, key="username", size=15, expand_x=True)],
             [sg.Text("Password:", size=8, background_color="#ececec", text_color="#34384b"),
              sg.Input(default_text="", key="password", size=15, password_char='*', expand_x=True)],
-            [sg.Button("Login", size=6), sg.Button("Cancel", size=6),
+            [sg.Button("Login", size=6), sg.Button("Cancel", size=6), sg.Button("Create", size=6),
              sg.Checkbox("Stay Logged In?", default=True, key="staylogin", background_color="#ececec",
                          text_color="#34384b")]]
 
@@ -687,8 +781,8 @@ class DesktopGui:
 
         # Tab Layout
         self.tabs_layout = [
-            [sg.Text(self.name, font=("Segoe UI", 20, "bold")),
-             sg.Push(),
+            [sg.Text(self.name, font=("Segoe UI", 20, "bold"), background_color="#34384b"),
+             sg.Push(background_color="#34384b"),
              sg.Button("Logout", expand_y=False, size=(7, 1),
                        font=("Segoe UI", 12, "bold")),
              sg.Button('Exit', expand_y=False, size=(7, 1),
@@ -711,7 +805,8 @@ class DesktopGui:
         # Main Page
         # self.window = sg.Window('Seen', self.tabs_layout, background_color="grey20", titlebar_text_color="black")
         self.window = sg.Window('Seen', self.tabs_layout, font=("Segoe UI", 15, ""), no_titlebar=False,
-                                margins=(0, 0), icon=self.icon, resizable=True, finalize=True)
+                                margins=(0, 0), icon=self.icon, resizable=True, finalize=True,
+                                background_color="#34384b")
         self.window.set_min_size((627, 470))
         self.run()
 
@@ -734,6 +829,8 @@ class DesktopGui:
                             self.save_login_info()
                         break
 
+            elif self.login_event == "Create":
+                CreateNewUser(self.db).get()
         self.choice.close()
 
     def run(self):
