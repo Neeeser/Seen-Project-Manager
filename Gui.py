@@ -9,7 +9,7 @@ from sys import platform
 from Group import Group
 import csv
 
-theme = {"BACKGROUND": "#ececec", "TEXT": "#fafafa", "INPUT": "#ffffff", "TEXT_INPUT": "#000000",
+theme = {"BACKGROUND": "#34384b", "TEXT": "#fafafa", "INPUT": "#ffffff", "TEXT_INPUT": "#000000",
          "SCROLL": "#e9dcbe",
          "BUTTON": ("#ffffff", "#00a758"), "PROGRESS": ('#000000', '#000000'), "BORDER": 1,
          "TAB": "00a758",
@@ -72,7 +72,7 @@ class CreateNewUser(sg.Window):
                     if retype == password or retype == "":
                         self["passerror"].update(visible=False)
                     else:
-                        self["passerror"].update(visible=True, value="Passwords do no match")
+                        self["passerror"].update(visible=True, value="Passwords do not match")
 
             elif self.event == "Create":
                 name = self["name"].get()
@@ -248,7 +248,8 @@ class DueDateEditor(sg.Window):
         self.temp_project = Project("NULL", [], [], due_date=project.due_date.copy())
 
         self.layout = [
-            [sg.Text("Which due dates?", expand_x=True, pad=(0, 0), font=("Segoe UI", 20, "bold"))],
+            [sg.Text("Which due dates?", expand_x=True, pad=(0, 0), font=("Segoe UI", 20, "bold"),
+                     background_color="#34384b")],
             [sg.Text("Upcoming Due Dates", expand_x=True, size=(12, 3), pad=(0, 0),
                      background_color="#ececec", text_color="#34384b"),
              sg.Push(background_color="#ececec"),
@@ -900,6 +901,7 @@ class DesktopGui:
                 if self.displayed_project:
                     self.temp_people = set(ComboPopUp("People", list(set(self.db.users) - self.displayed_project.owner),
                                                       list(set(self.temp_people) - self.displayed_project.owner)).get())
+
                     if self.temp_people:
                         self.window[self.manage_project_preface + "peopletext"].update(
                             self.temp_people.__str__().replace("{", "").replace("}", "").replace("'", ""),
