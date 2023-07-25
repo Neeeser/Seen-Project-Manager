@@ -9,6 +9,7 @@ from sys import platform
 from Group import Group
 import csv
 
+# Theme used in the program. Many windows manually override this
 theme = {"BACKGROUND": "#34384b", "TEXT": "#fafafa", "INPUT": "#ffffff", "TEXT_INPUT": "#000000",
          "SCROLL": "#e9dcbe",
          "BUTTON": ("#ffffff", "#00a758"), "PROGRESS": ('#000000', '#000000'), "BORDER": 1,
@@ -17,10 +18,12 @@ theme = {"BACKGROUND": "#34384b", "TEXT": "#fafafa", "INPUT": "#ffffff", "TEXT_I
          "COLOR_LIST": ["#ffffff", "#ffffff", "#ffffff", "#ffffff"], "DESCRIPTION": ["Grey", "Brown"]}
 
 
+# Window to create new users
 class CreateNewUser(sg.Window):
-
+    # Pass in database so the window can create it's own users
     def __init__(self, db: Database):
         self.db = db
+        # Layout
         self.layout = [
             [sg.Text("Full Name:", background_color="#ececec", text_color="#34384b", size=8),
              sg.In(size=15, key="name", enable_events=True)],
@@ -44,6 +47,7 @@ class CreateNewUser(sg.Window):
         super().__init__("New User", self.layout, keep_on_top=True, font=("Segoe UI", 15, ""),
                          background_color="#ececec", element_justification="left")
 
+    # Call this when creating a new window to trigger to window to start and return data
     def get(self):
         while True:
             self.event, self.com_values = self.read()
@@ -99,15 +103,18 @@ class CreateNewUser(sg.Window):
         return None
 
 
+# Window to export data lets you export data as different types
+# To add more types change export_types variable to reflect the name and supply a method to export
 class ExportPopUp(sg.Window):
 
     def __init__(self, name: str, report_dict: {}, icon: str = None):
         self.report_dict = report_dict
+        export_types = (("Comma separated value", ".csv"), ("Plain Text", ".txt"))
         self.layout = [[sg.In(key="save_as", size=15, disabled=True, expand_x=True),
                         sg.SaveAs("Browse", pad=(3, 3), button_color=("#34384b", "#ececec"),
                                   font=("Segoe UI", 15, "bold"), key="save_as",
                                   enable_events=False, default_extension=".csv",
-                                  file_types=(("Comma separated value", ".csv"), ("Plain Text", ".txt")))],
+                                  file_types=export_types)],
                        [sg.Button("Accept", expand_x=True, pad=(3, 3), button_color=("#34384b", "#ececec"),
                                   font=("Segoe UI", 15, "bold")),
                         sg.Button("Cancel", expand_x=True, pad=(3, 3), button_color=("#34384b", "#ececec"),
@@ -117,12 +124,10 @@ class ExportPopUp(sg.Window):
                          font=("Segoe UI", 15, ""), margins=(0, 0), background_color="#ececec", icon=icon)
         self.selected = []
 
+    # Call this to start window
     def get(self) -> []:
-        self.input_length = 0
-
         while True:
             self.event, self.com_values = self.read()
-
             if self.event in (sg.WIN_CLOSED, 'Exit'):
                 break
 
@@ -141,11 +146,13 @@ class ExportPopUp(sg.Window):
         self.close()
         return
 
+    # Saves in csv format
     def save_as_csv(self, path):
         with open(path, 'w+', newline='') as csvfile:
             csvwriter = csv.writer(csvfile)
             csvwriter.writerows(self.report_dict)
 
+    # Saves in plain text format
     def save_as_txt(self, path):
         with open(path, 'w+', newline='') as txtfile:
             for i in range(len(self.report_dict)):
@@ -156,8 +163,10 @@ class ExportPopUp(sg.Window):
                     txtfile.write(self.report_dict[1][i])
 
 
+# Create groups only needs group name for now
 class NewGroupPopUP(sg.Window):
 
+    # Pass in database to allow for window to create group
     def __init__(self, db: Database):
         self.db = db
         self.button_pad = (2, 2)
@@ -691,10 +700,10 @@ class DesktopGui:
         # if getattr(sys, 'frozen', False):
         #     self.userfile = os.path.join(sys._MEIPASS, self.userfile)
 
-        self.icon = "manulife.ico"
+        self.icon = "img/manulife.ico"
 
         if platform == "darwin":
-            self.icon = "manulife.icns"
+            self.icon = "img/manulife.icns"
         if getattr(sys, 'frozen', False):
             self.icon = os.path.join(sys._MEIPASS, self.icon)
         sg.set_options(icon=self.icon)
@@ -1306,5 +1315,4 @@ class DesktopGui:
             report[1].append(self.values['report' + str(i)])
         return report
 
-
-DesktopGui()
+# DesktopGui()

@@ -7,14 +7,15 @@ if platform == "linux" or platform == "linux2":
 elif platform == "darwin":
     # OS X
     PyInstaller.__main__.run([
-        "Gui.py",
+        "src/main.py",
         '--onefile',
-        "--add-data=seenworkflow_private_key.json:/",
+        "--add-data=private_key.json:/",
         '--add-data=manulife.icns:/',
         '--windowed',
-        '--icon=manulife.icns',
+        '--icon=img/manulife.icns',
         '--name=Seen',
         '--osx-bundle-identifier=Seen',
+        '--clean',
         '-y'
 
     ])
@@ -22,13 +23,14 @@ elif platform == "darwin":
 elif platform == "win32":
     # Windows...
     PyInstaller.__main__.run([
-        "Gui.py",
+        "src/main.py",
         '--onefile',
-        "--add-data=seenworkflow_private_key.json;\\",
-        "--add-data=manulife.ico;\\",
+        "--add-data=private_key.json;\\",
+        "--add-data=img\\manulife.ico;\\img",
         '--windowed',
-        '--icon=manulife.ico',
+        '--icon=img\\manulife.ico',
         '--name=Seen',
+        '--clean',
         '-y'
 
     ])

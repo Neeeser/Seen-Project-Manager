@@ -17,7 +17,7 @@ class Database:
         self.users = {}
         self.projects = {}
         self.groups = {}
-        self.firebase_address = "seenworkflow_private_key.json"
+        self.firebase_address = "private_key.json"
         dir_path = os.path.dirname(os.path.realpath(__file__))
         print(dir_path)
 
