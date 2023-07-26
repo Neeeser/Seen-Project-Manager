@@ -26,5 +26,6 @@ backend.
 
 1. Install requirements
     1. ```pip install -r requirements.txt```
-2. Run ```compiler.py```
-3. Open executable in ```dist/Seen```
+2. Put the firebase key json in ```/```
+3. Run ```compiler.py```
+4. Open executable in ```dist/Seen```

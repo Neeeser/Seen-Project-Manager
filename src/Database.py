@@ -13,16 +13,19 @@ from User import User
 
 class Database:
 
-    def __init__(self):
+    def __init__(self, firebase_key=None):
         self.users = {}
         self.projects = {}
         self.groups = {}
-        self.firebase_address = "private_key.json"
+        if firebase_key is None:
+            self.firebase_address = "private_key.json"
+            if getattr(sys, 'frozen', False):
+                self.firebase_address = os.path.join(sys._MEIPASS, self.firebase_address)
+        else:
+            self.firebase_address = firebase_key
+
         dir_path = os.path.dirname(os.path.realpath(__file__))
         print(dir_path)
-
-        if getattr(sys, 'frozen', False):
-            self.firebase_address = os.path.join(sys._MEIPASS, self.firebase_address)
 
         self.cred = credentials.Certificate(self.firebase_address)
         self.app = firebase_admin.initialize_app(self.cred,

@@ -683,7 +683,7 @@ def valid_interval_text(text):
 
 class DesktopGui:
 
-    def __init__(self):
+    def __init__(self, firebase_key=None):
         # Fields
         self.max_reports = 6
         self.reports_row = 2
@@ -716,7 +716,7 @@ class DesktopGui:
         self.user = None
         self.name = ""
         # Creating Database and loading the projects into it
-        self.db = Database()
+        self.db = Database(firebase_key=firebase_key)
         self.db.load_all()
         # Checks on Start up if logged in already
         self.check_if_logged_in()
