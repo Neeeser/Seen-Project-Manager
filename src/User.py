@@ -49,5 +49,5 @@ class User:
         try:
             self.projects.remove(project_name)
             self.save_user()
-        except:
+        except KeyError:
             print("Issue removing project:" + project_name + " from user " + self.user_name)

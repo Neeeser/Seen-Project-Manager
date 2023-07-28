@@ -309,10 +309,10 @@ class DueDateEditor(sg.Window):
                 break
 
             if self.event == "upcoming":
-                self["overdue"].set_value("")
+                self["overdue"].set_value([""])
 
             elif self.event == "overdue":
-                self["upcoming"].set_value("")
+                self["upcoming"].set_value([""])
 
             if self.event == "New":
                 date = sg.popup_get_date()
@@ -697,9 +697,6 @@ class DesktopGui:
         self.temp_duedates = []
         self.userfile = "users.json"
         self.export_file_types = ["CSV"]
-        # if getattr(sys, 'frozen', False):
-        #     self.userfile = os.path.join(sys._MEIPASS, self.userfile)
-
         self.icon = "img/manulife.ico"
 
         if platform == "darwin":

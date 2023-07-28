@@ -1,7 +1,6 @@
 from Gui import DesktopGui
 import PySimpleGUI as sg
 import os
-import firebase_admin
 
 
 class GetKeyWindow(sg.Window):
@@ -19,11 +18,11 @@ class GetKeyWindow(sg.Window):
 
     def run(self):
         while True:
-            self.event, self.com_values = self.read()
-            if self.event in (sg.WIN_CLOSED, 'Exit') or self.event == "Cancel":
+            event, com_values = self.read()
+            if event in (sg.WIN_CLOSED, 'Exit') or event == "Cancel":
                 break
 
-            elif self.event == "Accept":
+            elif event == "Accept":
                 if self["key"].get() != "":
                     self.close()
                     return self["key"].get()
